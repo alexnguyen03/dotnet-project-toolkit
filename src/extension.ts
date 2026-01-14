@@ -1,31 +1,114 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
+import { PublishTreeProvider } from './ui/publish/PublishTreeProvider';
+import { WatchTreeProvider } from './ui/watch/WatchTreeProvider';
+import { DebugTreeProvider } from './ui/debug/DebugTreeProvider';
+import { HistoryTreeProvider } from './ui/history/HistoryTreeProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log(
-    'Congratulations, your extension "dotnet-project-toolkit" is now active!'
-  );
 
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  const disposable = vscode.commands.registerCommand(
-    "dotnet-project-toolkit.helloWorld",
-    () => {
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      vscode.window.showInformationMessage(
-        "Hello World from .NET Project Toolkit!"
-      );
-    }
-  );
+	console.log('.NET Project Toolkit is now active!');
 
-  context.subscriptions.push(disposable);
+	// Get workspace root
+	const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+	// Create output channel
+	const outputChannel = vscode.window.createOutputChannel('.NET Toolkit');
+
+	// ============= Register TreeView Providers =============
+	
+	// 1. Publish View (Full implementation)
+	const publishProvider = new PublishTreeProvider(workspaceRoot);
+	vscode.window.registerTreeDataProvider('dotnetPublish', publishProvider);
+	
+	// 2. Watch View (Placeholder)
+	const watchProvider = new WatchTreeProvider();
+	vscode.window.registerTreeDataProvider('dotnetWatch', watchProvider);
+	
+	// 3. Debug View (Placeholder)
+	const debugProvider = new DebugTreeProvider();
+	vscode.window.registerTreeDataProvider('dotnetDebug', debugProvider);
+	
+	// 4. History View (Placeholder)
+	const historyProvider = new HistoryTreeProvider();
+	vscode.window.registerTreeDataProvider('dotnetHistory', historyProvider);
+
+	// ============= Register Commands =============
+	
+	// Refresh commands for each view
+	context.subscriptions.push(
+		vscode.commands.registerCommand('dotnet-project-toolkit.refreshProfiles', () => {
+			publishProvider.refresh();
+			outputChannel.appendLine('[Refresh] Publish profiles refreshed');
+		})
+	);
+
+	// Deploy profile command
+	context.subscriptions.push(
+		vscode.commands.registerCommand('dotnet-project-toolkit.deployProfile', async (item: any) => {
+			const profileName = item.label as string;
+			const isProd = item.isProd as boolean;
+
+			// Show confirmation for PROD
+			if (isProd) {
+				const answer = await vscode.window.showWarningMessage(
+					`⚠️ Deploy to PRODUCTION: ${profileName}?`,
+					{ modal: true },
+					'Deploy',
+					'Cancel'
+				);
+				if (answer !== 'Deploy') {
+					outputChannel.appendLine(`[Cancelled] ${profileName} deployment cancelled by user`);
+					return;
+				}
+			}
+
+			// Show deployment progress
+			await vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: `Deploying ${profileName}...`,
+					cancellable: false
+				},
+				async (progress) => {
+					outputChannel.appendLine(`[Deploy] Starting deployment: ${profileName}`);
+					outputChannel.show();
+					
+					progress.report({ increment: 0, message: 'Validating environment...' });
+					await new Promise(resolve => setTimeout(resolve, 500));
+					
+					progress.report({ increment: 30, message: 'Building project...' });
+					await new Promise(resolve => setTimeout(resolve, 1000));
+					
+					progress.report({ increment: 60, message: 'Publishing to IIS...' });
+					await new Promise(resolve => setTimeout(resolve, 1500));
+					
+					progress.report({ increment: 100, message: 'Complete!' });
+					outputChannel.appendLine(`[Success] ${profileName} deployed successfully!`);
+				}
+			);
+
+			vscode.window.showInformationMessage(`✅ ${profileName} deployed successfully!`);
+		})
+	);
+
+	// Configure environment variables
+	context.subscriptions.push(
+		vscode.commands.registerCommand('dotnet-project-toolkit.configureCredentials', async () => {
+			await vscode.window.showInformationMessage(
+				'Environment Variable Configuration\n\n' +
+				'Windows: [System.Environment]::SetEnvironmentVariable("DEPLOY_PWD", "your_password", "User")\n' +
+				'Linux/Mac: export DEPLOY_PWD="your_password"',
+				'OK'
+			);
+		})
+	);
+
+	outputChannel.appendLine('[Activated] .NET Project Toolkit extension activated successfully');
+	outputChannel.appendLine('[Info] 4 views registered: Publish, Watch, Debug, History');
 }
 
 // This method is called when your extension is deactivated

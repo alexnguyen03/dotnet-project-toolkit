@@ -81,12 +81,28 @@
     "views": {
       "dotnet-toolkit": [
         {
-          "id": "dotnetPublishProfiles",
-          "name": "Publish Profiles"
+          "id": "dotnetPublish",
+          "name": "Publish",
+          "icon": "$(rocket)",
+          "contextualTitle": "Publish Profiles"
         },
         {
-          "id": "dotnetDeploymentHistory",
-          "name": "Deployment History"
+          "id": "dotnetWatch",
+          "name": "Watch",
+          "icon": "$(eye)",
+          "contextualTitle": "Watch Instances"
+        },
+        {
+          "id": "dotnetDebug",
+          "name": "Debug",
+          "icon": "$(debug-alt)",
+          "contextualTitle": "Debug Configurations"
+        },
+        {
+          "id": "dotnetHistory",
+          "name": "History",
+          "icon": "$(history)",
+          "contextualTitle": "Deployment History"
         }
       ]
     },

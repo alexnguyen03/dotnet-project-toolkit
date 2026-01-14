@@ -1,71 +1,244 @@
-# dotnet-workspace-manager README
+# .NET Project Toolkit
 
-This is the README for your extension "dotnet-workspace-manager". After writing up a brief description, we recommend including the following sections.
+**All-in-one project toolkit for .NET developers**
 
-## Features
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/yourpublisher/dotnet-project-toolkit)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+## 🎯 Features
 
-For example if there is an image subfolder under your extension project workspace:
+### ✅ v0.1.0 - Multi-View Panel Structure
 
-\!\[feature X\]\(images/feature-x.png\)
+The extension provides **4 dedicated views** in the Activity Bar for different .NET development tasks:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+#### 📦 Publish View
 
-## Requirements
+- Hierarchical project structure (folders → projects → profiles)
+- One-click deployment to UAT/PROD environments
+- Deploy button on each publish profile
+- PROD deployment confirmation dialog
+- Deployment progress tracking
+- Output channel logging
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+#### ⚡ Watch View _(Coming in v1.1)_
 
-## Extension Settings
+- Multiple watch instances management
+- Hot-reload support
+- Auto-attach debugger capability
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+#### 🐛 Debug View _(Coming in v1.1)_
 
-For example:
+- Debug configuration management
+- Multi-session debugging
+- Quick profile switching
 
-This extension contributes the following settings:
+#### 📜 History View _(Coming in v1.2)_
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- Deployment history tracking
+- Timeline visualization
+- Rollback functionality
 
 ---
 
-## Following extension guidelines
+## 🚀 Getting Started
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+### Installation
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+1. **Install from VSIX** (Development):
 
-## Working with Markdown
+   ```bash
+   npm run compile
+   # Press F5 to launch Extension Development Host
+   ```
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+2. **From Marketplace** (When published):
+   - Search for ".NET Project Toolkit" in VS Code Extensions
+   - Click Install
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+### Quick Start
 
-## For more information
+1. **Open a .NET workspace** containing .csproj files
+2. **Click the .NET Toolkit icon** in the Activity Bar
+3. **Select "Publish" tab** to see available deployment profiles
+4. **Click the deploy button** 🚀 on any profile to start deployment
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+---
 
-**Enjoy!**
+## 📖 Usage
+
+### Publish View
+
+The Publish view displays your solution structure with all available publish profiles:
+
+```
+📦 Publish
+├── 📂 Server
+│   ├── 🌐 BudgetControl.Server.Api
+│   │   └── 📋 Profiles
+│   │       ├── 📄 uat-api [UAT] 🚀
+│   │       └── 📄 prod-api [PROD] ⚠️
+│   └── 🌐 BudgetControl.Server.Web
+│       └── 📋 Profiles
+│           ├── 📄 uat-web [UAT] 🚀
+│           └── 📄 prod-web [PROD] ⚠️
+```
+
+**To Deploy:**
+
+1. Expand project folders to see publish profiles
+2. Click the 🚀 icon next to any profile
+3. For PROD deployments, confirm in the dialog
+4. Monitor progress in the notification
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+The extension uses OS environment variables for deployment authentication:
+
+#### Windows (PowerShell):
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("DEPLOY_PWD", "your_uat_password", "User")
+[System.Environment]::SetEnvironmentVariable("DEPLOY_PWD_PROD", "your_prod_password", "User")
+```
+
+#### Linux/macOS (Bash/Zsh):
+
+```bash
+export DEPLOY_PWD="your_uat_password"
+export DEPLOY_PWD_PROD="your_prod_password"
+```
+
+### Extension Settings
+
+This extension contributes the following settings:
+
+- `dotnetToolkit.dotnetPath`: Path to dotnet CLI executable (default: `dotnet`)
+- `dotnetToolkit.deploymentTimeout`: Deployment timeout in seconds (default: `300`)
+- `dotnetToolkit.showNotifications`: Show deployment notifications (default: `true`)
+- `dotnetToolkit.confirmProductionDeploy`: Confirm before deploying to production (default: `true`)
+
+---
+
+## 🎨 Screenshots
+
+### Multi-View Panel
+
+![Multi-View Panel](media/multi-view-panel.png)
+
+### Publish View
+
+![Publish View](media/publish-view.png)
+
+### Deploy Progress
+
+![Deploy Progress](media/deploy-progress.png)
+
+---
+
+## 📝 Commands
+
+The extension provides the following commands:
+
+- `.NET Toolkit: Deploy to UAT - API`
+- `.NET Toolkit: Deploy to UAT - Client`
+- `.NET Toolkit: Deploy to Production - API`
+- `.NET Toolkit: Deploy to Production - Client`
+- `.NET Toolkit: Refresh Publish Profiles`
+- `.NET Toolkit: Configure Environment Variables`
+
+---
+
+## 🗺️ Roadmap
+
+### v1.0 - Core Deployment
+
+- [x] Multi-view panel structure
+- [x] Publish view with project hierarchy
+- [x] Mock deployment workflow
+- [ ] Real .pubxml file scanning
+- [ ] Actual dotnet publish execution
+- [ ] Environment variable validation
+
+### v1.1 - Watch & Debug
+
+- [ ] Watch view implementation
+- [ ] Multiple watch instances
+- [ ] Debug configuration management
+- [ ] Auto-attach debugger to watch
+
+### v1.2 - History & Advanced
+
+- [ ] Deployment history tracking
+- [ ] Rollback functionality
+- [ ] Performance monitoring
+
+---
+
+## 🛠️ Development
+
+### Prerequisites
+
+- Node.js 20+
+- npm 10+
+- VS Code 1.108.1+
+
+### Build & Test
+
+```bash
+# Install dependencies
+npm install
+
+# Compile TypeScript
+npm run compile
+
+# Watch for changes
+npm run watch
+
+# Run tests
+npm test
+
+# Package extension
+npm run package
+```
+
+### Project Structure
+
+```
+src/
+├── extension.ts              # Main entry point
+├── ui/
+│   ├── publish/             # Publish view (implemented)
+│   ├── watch/               # Watch view (placeholder)
+│   ├── debug/               # Debug view (placeholder)
+│   └── history/             # History view (placeholder)
+├── deployment/              # Deployment logic
+├── models/                  # Data models
+└── utils/                   # Utilities
+```
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourpublisher/dotnet-project-toolkit/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourpublisher/dotnet-project-toolkit/discussions)
+
+---
+
+**Made with ❤️ for .NET developers**
