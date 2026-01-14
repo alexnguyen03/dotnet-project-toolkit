@@ -1,10 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { PublishTreeProvider } from './ui/publish/PublishTreeProvider';
-import { WatchTreeProvider } from './ui/watch/WatchTreeProvider';
-import { DebugTreeProvider } from './ui/debug/DebugTreeProvider';
-import { HistoryTreeProvider } from './ui/history/HistoryTreeProvider';
+import { UnifiedTreeProvider } from './ui/UnifiedTreeProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -18,31 +15,17 @@ export function activate(context: vscode.ExtensionContext) {
 	// Create output channel
 	const outputChannel = vscode.window.createOutputChannel('.NET Toolkit');
 
-	// ============= Register TreeView Providers =============
+	// ============= Register Unified TreeView Provider =============
+	const unifiedProvider = new UnifiedTreeProvider(workspaceRoot);
+	vscode.window.registerTreeDataProvider('dotnetToolkitExplorer', unifiedProvider);
 	
-	// 1. Publish View (Full implementation)
-	const publishProvider = new PublishTreeProvider(workspaceRoot);
-	vscode.window.registerTreeDataProvider('dotnetPublish', publishProvider);
-	
-	// 2. Watch View (Placeholder)
-	const watchProvider = new WatchTreeProvider();
-	vscode.window.registerTreeDataProvider('dotnetWatch', watchProvider);
-	
-	// 3. Debug View (Placeholder)
-	const debugProvider = new DebugTreeProvider();
-	vscode.window.registerTreeDataProvider('dotnetDebug', debugProvider);
-	
-	// 4. History View (Placeholder)
-	const historyProvider = new HistoryTreeProvider();
-	vscode.window.registerTreeDataProvider('dotnetHistory', historyProvider);
-
 	// ============= Register Commands =============
 	
-	// Refresh commands for each view
+	// Refresh command
 	context.subscriptions.push(
 		vscode.commands.registerCommand('dotnet-project-toolkit.refreshProfiles', () => {
-			publishProvider.refresh();
-			outputChannel.appendLine('[Refresh] Publish profiles refreshed');
+			unifiedProvider.refresh();
+			outputChannel.appendLine('[Refresh] All views refreshed');
 		})
 	);
 
@@ -108,7 +91,12 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	outputChannel.appendLine('[Activated] .NET Project Toolkit extension activated successfully');
-	outputChannel.appendLine('[Info] 4 views registered: Publish, Watch, Debug, History');
+	outputChannel.appendLine('[Info] Unified view registered in Explorer');
+	outputChannel.appendLine('[Debug] View ID: dotnetToolkitExplorer');
+	outputChannel.appendLine('[Debug] Workspace root: ' + (workspaceRoot || 'No workspace'));
+	
+	// Show notification to confirm activation
+	vscode.window.showInformationMessage('✅ .NET Project Toolkit loaded successfully!');
 }
 
 // This method is called when your extension is deactivated

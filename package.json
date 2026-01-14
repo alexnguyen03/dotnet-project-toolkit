@@ -2,14 +2,14 @@
   "name": "dotnet-project-toolkit",
   "displayName": ".NET Project Toolkit",
   "description": "All-in-one project toolkit for .NET developers - deployment, watch, and debug management",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "yourpublisher",
   "repository": {
     "type": "git",
     "url": "https://github.com/yourpublisher/dotnet-project-toolkit"
   },
   "engines": {
-    "vscode": "^1.108.1"
+    "vscode": "^1.95.0"
   },
   "categories": [
     "Other",
@@ -27,8 +27,7 @@
     "watch"
   ],
   "activationEvents": [
-    "workspaceContains:**/*.pubxml",
-    "workspaceContains:**/*.csproj"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -69,40 +68,13 @@
         "icon": "$(refresh)"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "dotnet-toolkit",
-          "title": ".NET Toolkit",
-          "icon": "resources/icons/dotnet.svg"
-        }
-      ]
-    },
     "views": {
-      "dotnet-toolkit": [
+      "explorer": [
         {
-          "id": "dotnetPublish",
-          "name": "Publish",
-          "icon": "$(rocket)",
-          "contextualTitle": "Publish Profiles"
-        },
-        {
-          "id": "dotnetWatch",
-          "name": "Watch",
-          "icon": "$(eye)",
-          "contextualTitle": "Watch Instances"
-        },
-        {
-          "id": "dotnetDebug",
-          "name": "Debug",
-          "icon": "$(debug-alt)",
-          "contextualTitle": "Debug Configurations"
-        },
-        {
-          "id": "dotnetHistory",
-          "name": "History",
-          "icon": "$(history)",
-          "contextualTitle": "Deployment History"
+          "id": "dotnetToolkitExplorer",
+          "name": ".NET Project Toolkit",
+          "icon": "resources/icons/dotnet.svg",
+          "contextualTitle": ".NET Toolkit"
         }
       ]
     },
