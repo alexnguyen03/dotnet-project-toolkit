@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- .NET logo inspired design -->
+  <rect width="64" height="64" rx="8" fill="#512BD4"/>
+  <path d="M 12 32 L 24 16 L 36 32 L 24 48 Z" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="44" cy="32" r="8" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="48" y="24" width="4" height="16" fill="#512BD4"/>
+</svg>
