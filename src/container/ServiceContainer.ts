@@ -7,6 +7,8 @@ import { CommandRegistry } from '../commands/CommandRegistry';
 import { DeployProfileCommand } from '../commands/DeployProfileCommand';
 import { CreateProfileCommand } from '../commands/CreateProfileCommand';
 import { DeleteProfileCommand } from '../commands/DeleteProfileCommand';
+import { EditProfileCommand } from '../commands/EditProfileCommand';
+import { ProfileInfoCommand } from '../commands/ProfileInfoCommand';
 import { RefreshCommand } from '../commands/RefreshCommand';
 import { UnifiedTreeProvider } from '../ui/UnifiedTreeProvider';
 
@@ -65,6 +67,8 @@ export class ServiceContainer {
             new DeployProfileCommand(container.outputChannel, onRefresh),
             new CreateProfileCommand(container.outputChannel, container.profileService, onRefresh),
             new DeleteProfileCommand(container.outputChannel, container.profileService, container.passwordStorage, onRefresh),
+            new EditProfileCommand(container.outputChannel, container.profileService, onRefresh),
+            new ProfileInfoCommand(container.outputChannel, context.extensionUri, container.profileService, container.passwordStorage, onRefresh),
         ]);
 
         container.outputChannel.appendLine('[Container] All services initialized');

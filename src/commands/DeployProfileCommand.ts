@@ -25,11 +25,11 @@ export class DeployProfileCommand extends BaseCommand {
             return;
         }
 
-        const profileName = profileInfo.name;
+        const profileName = profileInfo.name;   
 
         // Confirm deployment
         const answer = await vscode.window.showWarningMessage(
-            `⚠️ Deploy to: ${profileName}?`,
+            `⚠️ Deploy to ${profileInfo.environment} environment: ${profileName}?`,
             { modal: true },
             'Deploy',
             'Cancel'

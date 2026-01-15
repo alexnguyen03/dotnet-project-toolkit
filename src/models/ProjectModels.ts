@@ -22,7 +22,16 @@ export interface PublishProfileInfo {
     publishUrl?: string;
     
     /** Web deploy method (e.g., MSDeploy) */
-    publishMethod?: string;
+    publishMethod?: string; // MSDeploy, FileSystem, etc
+    
+    /** IIS Site Name (for MSDeploy) */
+    siteName?: string;
+    
+    /** Destination Site URL (for browser launch) */
+    siteUrl?: string;
+    
+    /** Username for deployment */
+    userName?: string;
 }
 
 export interface ProjectInfo {

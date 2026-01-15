@@ -7,7 +7,7 @@ import { ServiceContainer } from './container/ServiceContainer';
  * Clean entry point following SOLID principles
  */
 export function activate(context: vscode.ExtensionContext) {
-    console.log('.NET Project Toolkit is now active!');
+    // console.log('.NET Project Toolkit is now active!');
 
     // Initialize all services and commands through DI container
     const container = ServiceContainer.initialize(context);
@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
     container.outputChannel.appendLine(`[Config] Password storage: ${container.passwordStorage.type}`);
 
     // Show notification
-    vscode.window.showInformationMessage('✅ .NET Project Toolkit loaded successfully!');
+    // vscode.window.showInformationMessage('✅ .NET Project Toolkit loaded successfully!');
 }
 
 /**

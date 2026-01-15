@@ -78,6 +78,11 @@
         "icon": "$(trash)"
       },
       {
+        "command": "dotnet-project-toolkit.profileInfo",
+        "title": ".NET Toolkit: Profile Info",
+        "icon": "$(info)"
+      },
+      {
         "command": "dotnet-project-toolkit.deployProfile",
         "title": ".NET Toolkit: Deploy Profile",
         "icon": "$(rocket)"

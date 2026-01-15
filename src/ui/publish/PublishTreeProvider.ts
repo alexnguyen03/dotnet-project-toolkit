@@ -125,24 +125,10 @@ export class PublishTreeItem extends vscode.TreeItem {
 		this.projectInfo = projectInfo;
 		this.profileInfo = profileInfo;
 		this.projectName = projectName;
-		this.tooltip = description || this.label;
 		if (description) {
 			this.description = description;
 		}
 		this.setupItem();
-	}
-
-	private generatePasswordVarName(projectName: string | undefined, profileName: string): string {
-		const sanitizedProject = (projectName || 'PROJECT')
-			.replace(/\./g, '_')  // Replace dots with underscores
-			.toUpperCase()
-			.replace(/[^A-Z0-9_]/g, '_')
-			.replace(/_+/g, '_');
-		const sanitizedProfile = profileName
-			.toUpperCase()
-			.replace(/[^A-Z0-9]/g, '_')
-			.replace(/_+/g, '_');
-		return `DEPLOY_PWD_${sanitizedProject}_${sanitizedProfile}`;
 	}
 
 	private setupItem() {
@@ -173,22 +159,28 @@ export class PublishTreeItem extends vscode.TreeItem {
 				break;
 			case 'publishProfile':
 				if (this.profileInfo) {
-					this.iconPath = this.profileInfo.isProduction
-						? new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'))
-						: new vscode.ThemeIcon('rocket');
+					// Environment-specific colored icons
+					const env = this.profileInfo.environment;
+					if (env === 'prod') {
+						this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
+						this.description = '🔴 PROD';
+					} else if (env === 'uat') {
+						this.iconPath = new vscode.ThemeIcon('beaker', new vscode.ThemeColor('charts.blue'));
+						this.description = '🔵 UAT';
+					} else if (env === 'dev') {
+						this.iconPath = new vscode.ThemeIcon('code', new vscode.ThemeColor('charts.green'));
+						this.description = '🟢 DEV';
+					} else {
+						this.iconPath = new vscode.ThemeIcon('circle-outline');
+						this.description = '⚪';
+					}
 					
-					// No click action - use inline buttons instead
-					
-					// Generate password variable name for tooltip (includes project name)
-					const passwordVarName = this.generatePasswordVarName(this.projectName, this.profileInfo.fileName);
-					
-					// Set tooltip with info
-					this.tooltip = new vscode.MarkdownString(
-						`**${this.profileInfo.name}**\n\n` +
-						`Environment: ${this.profileInfo.environment.toUpperCase()}\n\n` +
-						(this.profileInfo.publishUrl ? `URL: ${this.profileInfo.publishUrl}\n\n` : '') +
-						`Password var: \`${passwordVarName}\``
-					);
+					// Click to open profile info panel
+					this.command = {
+						command: 'dotnet-project-toolkit.profileInfo',
+						title: 'Show Profile Info',
+						arguments: [this]
+					};
 				}
 				break;
 			case 'placeholder':

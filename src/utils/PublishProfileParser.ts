@@ -35,6 +35,9 @@ export class PublishProfileParser {
             const publishUrl = propertyGroup?.PublishUrl || propertyGroup?.MSDeployServiceURL;
             const publishMethod = propertyGroup?.WebPublishMethod || propertyGroup?.PublishProvider;
             const environmentName = propertyGroup?.EnvironmentName;
+            const siteUrl = propertyGroup?.SiteUrlToLaunchAfterPublish;
+            const siteName = propertyGroup?.DeployIisAppPath || propertyGroup?.MsDeployAppPath;
+            const userName = propertyGroup?.UserName;
             
             // Detect environment from EnvironmentName field first, fallback to filename
             const environment = this.detectEnvironmentFromXml(environmentName) || this.detectEnvironment(fileName);
@@ -47,6 +50,9 @@ export class PublishProfileParser {
                 isProduction: environment === 'prod',
                 publishUrl: publishUrl,
                 publishMethod: publishMethod,
+                siteUrl: siteUrl,
+                siteName: siteName,
+                userName: userName
             };
         } catch (error) {
             console.error(`Failed to parse publish profile ${pubxmlPath}:`, error);
