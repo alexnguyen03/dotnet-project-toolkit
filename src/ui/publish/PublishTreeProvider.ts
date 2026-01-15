@@ -1,12 +1,19 @@
 import * as vscode from 'vscode';
+import { ProjectScanner } from '../../utils/ProjectScanner';
+import { ProjectInfo, PublishProfileInfo } from '../../models/ProjectModels';
 
 export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<PublishTreeItem | undefined | null | void> = new vscode.EventEmitter<PublishTreeItem | undefined | null | void>();
 	readonly onDidChangeTreeData: vscode.Event<PublishTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+	
+	private scanner: ProjectScanner;
 
-	constructor(private workspaceRoot: string | undefined) {}
+	constructor(private workspaceRoot: string | undefined) {
+		this.scanner = new ProjectScanner();
+	}
 
 	refresh(): void {
+		this.scanner.clearCache();
 		this._onDidChangeTreeData.fire();
 	}
 
@@ -16,108 +23,84 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 
 	async getChildren(element?: PublishTreeItem): Promise<PublishTreeItem[]> {
 		if (!this.workspaceRoot) {
-			vscode.window.showInformationMessage('No workspace folder open');
-			return [];
+			return [
+				new PublishTreeItem(
+					'No workspace folder open',
+					vscode.TreeItemCollapsibleState.None,
+					'placeholder'
+				)
+			];
 		}
 
 		if (!element) {
-			// Root level - show folder structure
-			return [
-				new PublishTreeItem(
-					'Server',
-					vscode.TreeItemCollapsibleState.Expanded,
-					'folder'
-				),
-				new PublishTreeItem(
-					'Client',
-					vscode.TreeItemCollapsibleState.Collapsed,
-					'folder'
-				)
-			];
-		}
-
-		if (element.contextValue === 'folder') {
-			// Folder level - show projects (mock data for now)
-			if (element.label === 'Server') {
+			// Root level - scan workspace
+			const workspace = await this.scanner.scanWorkspace(this.workspaceRoot);
+			
+			if (workspace.projects.length === 0) {
 				return [
 					new PublishTreeItem(
-						'BudgetControl.Server.Api',
-						vscode.TreeItemCollapsibleState.Collapsed,
-						'project'
-					),
-					new PublishTreeItem(
-						'BudgetControl.Server.Web',
-						vscode.TreeItemCollapsibleState.Collapsed,
-						'project'
-					),
-					new PublishTreeItem(
-						'Shared',
+						'No .NET projects found',
 						vscode.TreeItemCollapsibleState.None,
-						'library'
-					)
-				];
-			} else {
-				return [
-					new PublishTreeItem(
-						'BudgetControl.Client.Core',
-						vscode.TreeItemCollapsibleState.Collapsed,
-						'project'
+						'placeholder',
+						undefined,
+						'Open a workspace with .csproj files to see projects'
 					)
 				];
 			}
-		}
 
-		if (element.contextValue === 'project') {
-			// Project level - show "Profiles" folder
-			return [
-				new PublishTreeItem(
-					'Profiles',
-					vscode.TreeItemCollapsibleState.Expanded,
-					'profileFolder'
-				)
-			];
-		}
+			// Group by project type or show flat list
+			const apiProjects = workspace.projects.filter(p => p.projectType === 'api');
+			const webProjects = workspace.projects.filter(p => p.projectType === 'web');
+			const otherProjects = workspace.projects.filter(p => 
+				p.projectType !== 'api' && p.projectType !== 'web' && p.projectType !== 'library'
+			);
 
-		if (element.contextValue === 'profileFolder') {
-			// Profiles folder - show actual profiles (mock data)
-			const parentProject = element.label as string;
-			const profiles: PublishTreeItem[] = [];
-			
-			if (parentProject.includes('Api')) {
-				profiles.push(
+			const items: PublishTreeItem[] = [];
+
+			// Show publishable projects (API & Web)
+			for (const project of [...apiProjects, ...webProjects, ...otherProjects]) {
+				const hasProfiles = project.profiles.length > 0;
+				items.push(
 					new PublishTreeItem(
-						'uat-api [UAT]',
-						vscode.TreeItemCollapsibleState.None,
-						'publishProfile'
-					)
-				);
-				profiles.push(
-					new PublishTreeItem(
-						'prod-api [PROD]',
-						vscode.TreeItemCollapsibleState.None,
-						'publishProfile',
-						true // isProd
-					)
-				);
-			} else if (parentProject.includes('Web')) {
-				profiles.push(
-					new PublishTreeItem(
-						'uat-web [UAT]',
-						vscode.TreeItemCollapsibleState.None,
-						'publishProfile'
-					)
-				);
-				profiles.push(
-					new PublishTreeItem(
-						'prod-web [PROD]',
-						vscode.TreeItemCollapsibleState.None,
-						'publishProfile',
-						true
+						project.name,
+						hasProfiles ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+						'project',
+						project
 					)
 				);
 			}
+
+			return items;
+		}
+
+		if (element.contextValue === 'project' && element.projectInfo) {
+			// Project level - show profiles or placeholder
+			const project = element.projectInfo;
 			
-			return profiles;
+			if (project.profiles.length === 0) {
+				return [
+					new PublishTreeItem(
+						'No publish profiles found',
+						vscode.TreeItemCollapsibleState.None,
+						'placeholder',
+						undefined,
+						'Create profiles in Visual Studio or add .pubxml files to Properties/PublishProfiles/'
+					)
+				];
+			}
+
+			// Show publish profiles
+			return project.profiles.map(profile => 
+				new PublishTreeItem(
+					profile.name,
+					vscode.TreeItemCollapsibleState.None,
+					'publishProfile',
+					undefined,
+					undefined,
+					profile,
+					project.name // Pass project name for password var naming
+				)
+			);
 		}
 
 		return [];
@@ -125,43 +108,91 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 }
 
 export class PublishTreeItem extends vscode.TreeItem {
+	public readonly projectInfo?: ProjectInfo;
+	public readonly profileInfo?: PublishProfileInfo;
+	public readonly projectName?: string;
+	
 	constructor(
 		public readonly label: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly contextValue: string,
-		public readonly isProd: boolean = false
+		projectInfo?: ProjectInfo,
+		description?: string,
+		profileInfo?: PublishProfileInfo,
+		projectName?: string
 	) {
 		super(label, collapsibleState);
-		this.tooltip = this.label;
+		this.projectInfo = projectInfo;
+		this.profileInfo = profileInfo;
+		this.projectName = projectName;
+		this.tooltip = description || this.label;
+		if (description) {
+			this.description = description;
+		}
 		this.setupItem();
+	}
+
+	private generatePasswordVarName(projectName: string | undefined, profileName: string): string {
+		const sanitizedProject = (projectName || 'PROJECT')
+			.replace(/\./g, '_')  // Replace dots with underscores
+			.toUpperCase()
+			.replace(/[^A-Z0-9_]/g, '_')
+			.replace(/_+/g, '_');
+		const sanitizedProfile = profileName
+			.toUpperCase()
+			.replace(/[^A-Z0-9]/g, '_')
+			.replace(/_+/g, '_');
+		return `DEPLOY_PWD_${sanitizedProject}_${sanitizedProfile}`;
 	}
 
 	private setupItem() {
 		// Set icons based on type
 		switch (this.contextValue) {
-			case 'folder':
-				this.iconPath = new vscode.ThemeIcon('folder');
-				break;
 			case 'project':
-				this.iconPath = new vscode.ThemeIcon('globe');
-				break;
-			case 'library':
-				this.iconPath = new vscode.ThemeIcon('library');
-				break;
-			case 'profileFolder':
-				this.iconPath = new vscode.ThemeIcon('folder-opened');
+				if (this.projectInfo) {
+					switch (this.projectInfo.projectType) {
+						case 'api':
+							this.iconPath = new vscode.ThemeIcon('circuit-board');
+							break;
+						case 'web':
+							this.iconPath = new vscode.ThemeIcon('browser');
+							break;
+						case 'library':
+							this.iconPath = new vscode.ThemeIcon('library');
+							break;
+						default:
+							this.iconPath = new vscode.ThemeIcon('file-code');
+					}
+					
+					// Show profile count in description
+					const profileCount = this.projectInfo.profiles.length;
+					if (profileCount > 0) {
+						this.description = `${profileCount} profile${profileCount > 1 ? 's' : ''}`;
+					}
+				}
 				break;
 			case 'publishProfile':
-				this.iconPath = this.isProd 
-					? new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'))
-					: new vscode.ThemeIcon('file-code');
-				
-				// Add inline deploy button
-				this.command = {
-					command: 'dotnet-project-toolkit.deployProfile',
-					title: 'Deploy',
-					arguments: [this]
-				};
+				if (this.profileInfo) {
+					this.iconPath = this.profileInfo.isProduction
+						? new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'))
+						: new vscode.ThemeIcon('rocket');
+					
+					// No click action - use inline buttons instead
+					
+					// Generate password variable name for tooltip (includes project name)
+					const passwordVarName = this.generatePasswordVarName(this.projectName, this.profileInfo.fileName);
+					
+					// Set tooltip with info
+					this.tooltip = new vscode.MarkdownString(
+						`**${this.profileInfo.name}**\n\n` +
+						`Environment: ${this.profileInfo.environment.toUpperCase()}\n\n` +
+						(this.profileInfo.publishUrl ? `URL: ${this.profileInfo.publishUrl}\n\n` : '') +
+						`Password var: \`${passwordVarName}\``
+					);
+				}
+				break;
+			case 'placeholder':
+				this.iconPath = new vscode.ThemeIcon('info');
 				break;
 		}
 	}

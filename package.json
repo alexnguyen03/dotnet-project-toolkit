@@ -66,6 +66,21 @@
         "command": "dotnet-project-toolkit.refreshProfiles",
         "title": ".NET Toolkit: Refresh Publish Profiles",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "dotnet-project-toolkit.createPublishProfile",
+        "title": ".NET Toolkit: Create Publish Profile",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dotnet-project-toolkit.deletePublishProfile",
+        "title": ".NET Toolkit: Delete Publish Profile",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "dotnet-project-toolkit.deployProfile",
+        "title": ".NET Toolkit: Deploy Profile",
+        "icon": "$(rocket)"
       }
     ],
     "views": {
@@ -75,6 +90,25 @@
           "name": ".NET Project Toolkit",
           "icon": "resources/icons/dotnet.svg",
           "contextualTitle": ".NET Toolkit"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "dotnet-project-toolkit.createPublishProfile",
+          "when": "view == dotnetToolkitExplorer && viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.deployProfile",
+          "when": "view == dotnetToolkitExplorer && viewItem == publishProfile",
+          "group": "inline@1"
+        },
+        {
+          "command": "dotnet-project-toolkit.deletePublishProfile",
+          "when": "view == dotnetToolkitExplorer && viewItem == publishProfile",
+          "group": "inline@2"
         }
       ]
     },

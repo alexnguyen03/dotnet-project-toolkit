@@ -1,0 +1,153 @@
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ProjectInfo, WorkspaceStructure } from '../models/ProjectModels';
+import { PublishProfileParser } from './PublishProfileParser';
+
+/**
+ * Scanner for .NET projects and publish profiles in the workspace
+ */
+export class ProjectScanner {
+    private parser: PublishProfileParser;
+    private cache: WorkspaceStructure | null = null;
+    private cacheTimestamp: number = 0;
+    private readonly CACHE_TTL = 5000; // 5 seconds
+
+    constructor() {
+        this.parser = new PublishProfileParser();
+    }
+
+    /**
+     * Scan workspace for .NET projects and their publish profiles
+     */
+    async scanWorkspace(workspaceRoot: string): Promise<WorkspaceStructure> {
+        // Return cached result if still valid
+        const now = Date.now();
+        if (this.cache && (now - this.cacheTimestamp) < this.CACHE_TTL) {
+            return this.cache;
+        }
+
+        const projects = await this.findProjects(workspaceRoot);
+        
+        // Enrich each project with publish profiles
+        for (const project of projects) {
+            project.profiles = await this.findPublishProfiles(project.projectDir);
+        }
+
+        const structure: WorkspaceStructure = {
+            projects: projects,
+            hasServerClientStructure: this.detectServerClientStructure(projects),
+        };
+
+        // Update cache
+        this.cache = structure;
+        this.cacheTimestamp = now;
+
+        return structure;
+    }
+
+    /**
+     * Clear the cache to force a fresh scan
+     */
+    clearCache(): void {
+        this.cache = null;
+        this.cacheTimestamp = 0;
+    }
+
+    /**
+     * Recursively find all .csproj files in the workspace
+     */
+    private async findProjects(rootPath: string): Promise<ProjectInfo[]> {
+        const projects: ProjectInfo[] = [];
+        
+        // Use VS Code's findFiles API for better performance
+        const csprojFiles = await vscode.workspace.findFiles(
+            '**/*.csproj',
+            '**/node_modules/**,**/bin/**,**/obj/**'
+        );
+
+        for (const uri of csprojFiles) {
+            const csprojPath = uri.fsPath;
+            const projectDir = path.dirname(csprojPath);
+            const projectName = path.basename(csprojPath, '.csproj');
+            const projectType = this.detectProjectType(projectName, csprojPath);
+
+            projects.push({
+                name: projectName,
+                csprojPath: csprojPath,
+                projectDir: projectDir,
+                projectType: projectType,
+                profiles: [], // Will be populated later
+            });
+        }
+
+        return projects;
+    }
+
+    /**
+     * Find all publish profiles for a given project
+     */
+    private async findPublishProfiles(projectDir: string): Promise<any[]> {
+        const profiles: any[] = [];
+        const publishProfilesDir = path.join(projectDir, 'Properties', 'PublishProfiles');
+
+        if (!fs.existsSync(publishProfilesDir)) {
+            return profiles;
+        }
+
+        try {
+            const files = fs.readdirSync(publishProfilesDir);
+            
+            for (const file of files) {
+                if (file.endsWith('.pubxml')) {
+                    const pubxmlPath = path.join(publishProfilesDir, file);
+                    const profileInfo = this.parser.parseProfile(pubxmlPath);
+                    
+                    if (profileInfo) {
+                        profiles.push(profileInfo);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`Failed to read publish profiles from ${publishProfilesDir}:`, error);
+        }
+
+        // Sort profiles: DEV -> UAT -> PROD
+        return profiles.sort((a, b) => {
+            const order: Record<string, number> = { dev: 1, uat: 2, prod: 3, unknown: 4 };
+            return (order[a.environment] || 99) - (order[b.environment] || 99);
+        });
+    }
+
+    /**
+     * Detect project type from name or content
+     */
+    private detectProjectType(projectName: string, csprojPath: string): 'api' | 'web' | 'library' | 'unknown' {
+        const lowerName = projectName.toLowerCase();
+        
+        if (lowerName.includes('api')) {
+            return 'api';
+        }
+        if (lowerName.includes('web') || lowerName.includes('blazor')) {
+            return 'web';
+        }
+        if (lowerName.includes('shared') || lowerName.includes('lib') || lowerName.includes('core')) {
+            return 'library';
+        }
+
+        // TODO: Could also read .csproj content to detect SDK type
+        // <Project Sdk="Microsoft.NET.Sdk.Web"> vs <Project Sdk="Microsoft.NET.Sdk">
+        
+        return 'unknown';
+    }
+
+    /**
+     * Detect if workspace has a typical Server/Client folder structure
+     */
+    private detectServerClientStructure(projects: ProjectInfo[]): boolean {
+        const hasServer = projects.some(p => p.projectDir.includes('Server') || p.projectDir.includes('server'));
+        const hasClient = projects.some(p => p.projectDir.includes('Client') || p.projectDir.includes('client'));
+        
+        return hasServer && hasClient;
+    }
+}

@@ -2,6 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { UnifiedTreeProvider } from './ui/UnifiedTreeProvider';
+import { PublishProfileCreator } from './utils/PublishProfileCreator';
+import { PublishProfileDeleter } from './utils/PublishProfileDeleter';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -32,21 +34,25 @@ export function activate(context: vscode.ExtensionContext) {
 	// Deploy profile command
 	context.subscriptions.push(
 		vscode.commands.registerCommand('dotnet-project-toolkit.deployProfile', async (item: any) => {
-			const profileName = item.label as string;
-			const isProd = item.isProd as boolean;
+			// Extract profile information
+			const profileInfo = item.profileInfo;
+			
+			if (!profileInfo) {
+				vscode.window.showErrorMessage('No profile information available');
+				return;
+			}
+			
+			const profileName = profileInfo.name;
 
-			// Show confirmation for PROD
-			if (isProd) {
-				const answer = await vscode.window.showWarningMessage(
-					`⚠️ Deploy to PRODUCTION: ${profileName}?`,
-					{ modal: true },
-					'Deploy',
-					'Cancel'
-				);
-				if (answer !== 'Deploy') {
-					outputChannel.appendLine(`[Cancelled] ${profileName} deployment cancelled by user`);
-					return;
-				}
+			const answer = await vscode.window.showWarningMessage(
+				`⚠️ Deploy to: ${profileName}?`,
+				{ modal: true },
+				'Deploy',
+				'Cancel'
+			);
+			if (answer !== 'Deploy') {
+				outputChannel.appendLine(`[Cancelled] ${profileName} deployment cancelled by user`);
+				return;
 			}
 
 			// Show deployment progress
@@ -58,6 +64,8 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 				async (progress) => {
 					outputChannel.appendLine(`[Deploy] Starting deployment: ${profileName}`);
+					outputChannel.appendLine(`[Deploy] Profile path: ${profileInfo.path}`);
+					outputChannel.appendLine(`[Deploy] Environment: ${profileInfo.environment}`);
 					outputChannel.show();
 					
 					progress.report({ increment: 0, message: 'Validating environment...' });
@@ -75,6 +83,61 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 
 			vscode.window.showInformationMessage(`✅ ${profileName} deployed successfully!`);
+		})
+	);
+
+	// Create publish profile command
+	context.subscriptions.push(
+		vscode.commands.registerCommand('dotnet-project-toolkit.createPublishProfile', async (item: any) => {
+			const projectInfo = item.projectInfo;
+			
+			if (!projectInfo) {
+				vscode.window.showErrorMessage('No project information available');
+				return;
+			}
+
+			outputChannel.appendLine(`[CreateProfile] Starting wizard for project: ${projectInfo.name}`);
+			
+			// Create profile creator
+			const creator = new PublishProfileCreator();
+			
+			// Run wizard
+			const success = await creator.createProfileWizard(projectInfo, outputChannel);
+			
+			if (success) {
+				// Refresh tree to show new profile
+				unifiedProvider.refresh();
+				outputChannel.appendLine(`[CreateProfile] ✓ Profile created and tree refreshed`);
+			} else {
+				outputChannel.appendLine(`[CreateProfile] Profile creation cancelled or failed`);
+			}
+		})
+	);
+
+	// Delete publish profile command
+	context.subscriptions.push(
+		vscode.commands.registerCommand('dotnet-project-toolkit.deletePublishProfile', async (item: any) => {
+			const profileInfo = item.profileInfo;
+			
+			if (!profileInfo) {
+				vscode.window.showErrorMessage('No profile information available');
+				return;
+			}
+
+			outputChannel.appendLine(`[DeleteProfile] Requesting deletion: ${profileInfo.fileName}`);
+			
+			// Create profile deleter
+			const deleter = new PublishProfileDeleter();
+			
+			// Run deletion with confirmation (pass projectName for password var naming)
+			const projectName = item.projectName || 'Project';
+			const success = await deleter.deleteProfile(profileInfo, projectName, outputChannel);
+			
+			if (success) {
+				// Refresh tree to remove deleted profile
+				unifiedProvider.refresh();
+				outputChannel.appendLine(`[DeleteProfile] ✓ Profile deleted and tree refreshed`);
+			}
 		})
 	);
 
