@@ -72,7 +72,7 @@ function init(data) {
         // Disable profile name click in create mode
         const profileNameText = document.getElementById('displayProfileName');
         if (profileNameText) {
-            profileNameText.style.cursor = 'default';
+            profileNameText.classList.add('non-clickable');
             profileNameText.title = 'New profile (not saved yet)';
         }
 
@@ -124,6 +124,13 @@ function init(data) {
         // Show delete button
         const deleteBtn = document.getElementById('btnDelete');
         if (deleteBtn) deleteBtn.style.display = 'block';
+
+        // Enable profile name click in edit mode
+        const profileNameText = document.getElementById('displayProfileName');
+        if (profileNameText) {
+            profileNameText.classList.remove('non-clickable');
+            profileNameText.title = 'Click to open profile file';
+        }
     }
 
     // Deploy Status
@@ -167,7 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Profile name click (open file)
     const profileNameText = document.getElementById('displayProfileName');
     if (profileNameText) {
-        profileNameText.style.cursor = 'pointer';
         profileNameText.addEventListener('click', () => {
             if (window.currentData && !window.currentData.isCreateMode) {
                 vscode.postMessage({ command: 'openFile' });

@@ -55,6 +55,34 @@ body {
     color: var(--description);
 }
 
+.profile-name-text {
+    color: var(--vscode-textLink-foreground);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+    transition: all 0.2s;
+}
+
+.profile-name-text:hover {
+    color: var(--vscode-textLink-activeForeground);
+    text-decoration-style: solid;
+    opacity: 0.8;
+}
+
+.profile-name-text.non-clickable {
+    color: var(--fg);
+    cursor: default;
+    text-decoration: none;
+    opacity: 0.7;
+}
+
+.profile-name-text.non-clickable:hover {
+    color: var(--fg);
+    text-decoration: none;
+    opacity: 0.7;
+}
+
 .header-right {
     display: flex;
     flex-direction: column;
