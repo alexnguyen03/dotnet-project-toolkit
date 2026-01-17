@@ -117,6 +117,25 @@ export class ServiceContainer {
             })
         );
 
+        // Register createProfileWithPanel command
+        context.subscriptions.push(
+            vscode.commands.registerCommand('dotnet-project-toolkit.createProfileWithPanel', async (args: any) => {
+                if (args && args.projectInfo && args.profileName && args.environment) {
+                    ProfileInfoPanel.showForCreate(
+                        context.extensionUri,
+                        args.projectInfo,
+                        args.profileName,
+                        args.environment,
+                        container.profileService,
+                        container.passwordStorage,
+                        container.historyManager,
+                        container.outputChannel,
+                        onRefresh
+                    );
+                }
+            })
+        );
+
         container.outputChannel.appendLine('[Container] All services initialized');
 
         return container;

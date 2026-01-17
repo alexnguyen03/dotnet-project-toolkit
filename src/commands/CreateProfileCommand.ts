@@ -27,9 +27,9 @@ export class CreateProfileCommand extends BaseCommand {
             return;
         }
 
-        this.log(`Starting wizard for: ${projectInfo.name}`);
+        this.log(`Starting create profile for: ${projectInfo.name}`);
 
-        // Step 1: Profile name
+        // Only ask for profile name
         const profileName = await vscode.window.showInputBox({
             prompt: 'Enter profile name (e.g., uat-api, prod-web)',
             placeHolder: 'uat-api',
@@ -41,7 +41,7 @@ export class CreateProfileCommand extends BaseCommand {
         });
 
         if (!profileName) {
-            this.log('Wizard cancelled');
+            this.log('Create profile cancelled');
             return;
         }
 
@@ -51,40 +51,13 @@ export class CreateProfileCommand extends BaseCommand {
         if (lowerName.includes('uat')) env = 'uat';
         if (lowerName.includes('prod')) env = 'prod';
 
-        // Prepare initial data
-        const data: ProfileWizardData = {
-            profileName,
-            environment: env,
-            publishUrl: '',
-            siteName: '',
-            username: '',
-            password: '',
-            siteUrl: ''
-        };
+        this.log(`Opening profile panel for new profile: ${profileName}`);
 
-        // Create profile
-        const profilePath = await this.profileService.create(projectInfo, data);
-
-        if (profilePath) {
-            this.log(`✓ Created: ${profilePath}`);
-            vscode.window.showInformationMessage(`✅ Profile "${profileName}" created!`);
-            this.onRefresh();
-
-            // Open the info panel for the new profile
-            const profileInfo = this.profileService.parse(profilePath);
-            if (profileInfo) {
-                await vscode.commands.executeCommand('dotnet-project-toolkit.profileInfo', {
-                    profileInfo: profileInfo,
-                    projectName: projectInfo.name
-                });
-            }
-        } else {
-            this.log('Failed to create profile');
-        }
-    }
-
-    private async collectProfileData(): Promise<ProfileWizardData | undefined> {
-        // Method no longer used in this streamlined version
-        return undefined;
+        // Open ProfileInfoPanel in "create mode" with empty profile data
+        await vscode.commands.executeCommand('dotnet-project-toolkit.createProfileWithPanel', {
+            projectInfo: projectInfo,
+            profileName: profileName,
+            environment: env
+        });
     }
 }

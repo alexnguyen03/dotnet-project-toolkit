@@ -27,11 +27,6 @@ function init(data) {
 
     const pwdKey = data.passwordKey;
     const displayPasswordKey = document.getElementById('displayPasswordKey');
-    if (displayPasswordKey) displayPasswordKey.textContent = pwdKey;
-
-    const displayPasswordKeyUsage = document.getElementById('displayPasswordKeyUsage');
-    if (displayPasswordKeyUsage) displayPasswordKeyUsage.textContent = `/ p: Password = $env:${pwdKey} `;
-
     // Badge
     const badge = document.getElementById('envBadge');
     if (badge) {
@@ -55,28 +50,96 @@ function init(data) {
     const userInput = document.getElementById('username');
     if (userInput) userInput.value = data.username || '';
 
+    // Handle create mode vs edit mode
+    // Styles handled by CSS now
+
+    const modeHeader = document.getElementById('modeHeader');
+
+    if (data.isCreateMode) {
+        // Mode Title
+        if (modeHeader) {
+            modeHeader.textContent = 'Create Profile';
+            // Optional: Keep color distinction via class or keep default
+            modeHeader.style.color = 'var(--vscode-charts-green)';
+        }
+
+        // Disable profile name click in create mode
+        const profileNameText = document.getElementById('displayProfileName');
+        if (profileNameText) {
+            profileNameText.style.cursor = 'default';
+            profileNameText.title = 'New profile (not saved yet)';
+        }
+
+        // Hide deploy button in create mode (Hide container to remove spacing)
+        const deployContainer = document.getElementById('deployBtnContainer');
+        // Actually skectch shows button always? No, typically hide deploy on create.
+        // Let's hide the button itself to keep layout stable if other items exist, or hide container
+        if (deployContainer) deployContainer.style.display = 'none';
+
+        // Fake placeholders for create mode
+        setPlaceholders({
+            publishUrl: 'e.g. 192.168.10.5 or my-server.com',
+            siteName: 'e.g. MyWebSite_UAT',
+            siteUrl: 'e.g. https://uat.myapp.com',
+            username: 'e.g. deploy_user',
+            password: 'Enter server password'
+        });
+
+        // Update submit button text
+        const submitBtn = document.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.innerHTML = 'Create Profile';
+
+        // Hide delete button
+        const deleteBtn = document.getElementById('btnDelete');
+        if (deleteBtn) deleteBtn.style.display = 'none';
+
+        // Hide separator context if needed, but 'Create Profile : [Name]' is fine
+
+    } else {
+        // Edit Mode Title
+        if (modeHeader) {
+            modeHeader.textContent = 'Edit Profile';
+            modeHeader.style.color = ''; // Reset to default CSS color
+        }
+
+        // Restore placeholders for edit mode
+        setPlaceholders({
+            publishUrl: '192.168.10.3',
+            siteName: 'TS_BUDGETCTRL_API_UAT',
+            siteUrl: 'https://example.com',
+            username: 'namnh',
+            password: 'Leave empty to keep existing'
+        });
+
+        // Show deploy button
+        const deployContainer = document.getElementById('deployBtnContainer');
+        if (deployContainer) deployContainer.style.display = 'block';
+
+        // Show delete button
+        const deleteBtn = document.getElementById('btnDelete');
+        if (deleteBtn) deleteBtn.style.display = 'block';
+    }
+
     // Deploy Status
     const container = document.getElementById('deployBtnContainer');
     if (data.isDeploying) {
         if (container) {
             container.innerHTML = `
-                <button type="button" class="btn-success" disabled title="Deployment in progress...">
+                <button type="button" class="btn-primary" disabled title="Deployment in progress...">
                     <div class="spinner"></div> Deploying...
                 </button>`;
         }
 
-        // Disable form
         const inputs = document.querySelectorAll('input, select, button');
         inputs.forEach(el => el.disabled = true);
     } else {
-        // Restore normal state
         if (container) {
+            // Restore button
             container.innerHTML = `
                 <button type="button" class="btn-success" id="btnDeploy" title="Deploy to this environment">
-                    🚀 Deploy
+                    Deploy
                 </button>`;
 
-            // Re-attach event listener after recreating button
             const deployBtn = document.getElementById('btnDeploy');
             if (deployBtn) {
                 deployBtn.addEventListener('click', () => {
@@ -85,22 +148,41 @@ function init(data) {
             }
         }
 
-        // Enable form
         const inputs = document.querySelectorAll('input, select, button');
         inputs.forEach(el => el.disabled = false);
     }
 }
 
-// Signal that webview is ready to receive data
+// Signal ready
 vscode.postMessage({ command: 'ready' });
 
 // Setup event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Profile name header click
-    const profileHeader = document.getElementById('profileNameHeader');
-    if (profileHeader) {
-        profileHeader.addEventListener('click', () => {
-            vscode.postMessage({ command: 'openFile' });
+    // Profile name click (open file)
+    const profileNameText = document.getElementById('displayProfileName');
+    if (profileNameText) {
+        profileNameText.style.cursor = 'pointer';
+        profileNameText.addEventListener('click', () => {
+            if (window.currentData && !window.currentData.isCreateMode) {
+                vscode.postMessage({ command: 'openFile' });
+            }
+        });
+    }
+
+    // Environment change
+    const envSelect = document.getElementById('environment');
+    if (envSelect) {
+        envSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            const badge = document.getElementById('envBadge');
+            if (badge) {
+                // Update class to match new CSS naming (e.g., 'badge uat')
+                badge.className = `badge ${val}`;
+                badge.textContent = val.toUpperCase();
+
+                // Optional: Update border color if we want inline control, 
+                // but CSS classes .badge.uat handles it now.
+            }
         });
     }
 
@@ -115,7 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cancel button
     const cancelBtn = document.getElementById('btnCancel');
     if (cancelBtn) {
-        cancelBtn.addEventListener('click', resetForm);
+        cancelBtn.addEventListener('click', () => {
+            // In create mode, cancel means close the panel
+            if (window.currentData && window.currentData.isCreateMode) {
+                vscode.postMessage({ command: 'close' });
+            } else {
+                resetForm();
+            }
+        });
     }
 
     // Delete button
@@ -136,11 +225,17 @@ if (form) {
         const publishUrl = document.getElementById('publishUrl').value.trim();
         const siteName = document.getElementById('siteName').value.trim();
         const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value; // Don't trim password
 
         let errors = [];
         if (!publishUrl) errors.push('Publish URL is required');
         if (!siteName) errors.push('Site Name is required');
         if (!username) errors.push('Username is required');
+
+        // Require password in create mode
+        if (window.currentData && window.currentData.isCreateMode && !password) {
+            errors.push('Password is required for new profiles');
+        }
 
         // Show validation errors
         clearErrors();
@@ -191,3 +286,14 @@ function showErrors(errors) {
     const actionsDiv = document.querySelector('.actions');
     if (actionsDiv) actionsDiv.before(errorBox);
 }
+
+function setPlaceholders(placeholders) {
+    const ids = ['publishUrl', 'siteName', 'siteUrl', 'username', 'password'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && placeholders[id]) {
+            el.placeholder = placeholders[id];
+        }
+    });
+}
+

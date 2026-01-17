@@ -12,13 +12,18 @@ import { DeploymentRecordHelper } from '../models/DeploymentRecord';
  * Shows profile details and allows editing
  */
 export class ProfileInfoPanel {
-    public static currentPanel: ProfileInfoPanel | undefined;
+    // Map to store active panels: key -> panel
+    private static panels: Map<string, ProfileInfoPanel> = new Map();
+
     private readonly panel: vscode.WebviewPanel;
     private disposables: vscode.Disposable[] = [];
 
     // Store mutable state
     private currentProfileInfo: PublishProfileInfo;
     private currentProjectName: string;
+    private isCreateMode: boolean = false;
+    private projectInfo?: ProjectInfo;
+    private panelKey: string;
 
     private constructor(
         panel: vscode.WebviewPanel,
@@ -29,11 +34,17 @@ export class ProfileInfoPanel {
         private readonly passwordStorage: IPasswordStorage,
         private readonly historyManager: HistoryManager,
         private readonly outputChannel: vscode.OutputChannel,
-        private readonly onRefresh: () => void
+        private readonly onRefresh: () => void,
+        key: string,
+        isCreateMode: boolean = false,
+        projectInfo?: ProjectInfo
     ) {
         this.panel = panel;
         this.currentProfileInfo = profileInfo;
         this.currentProjectName = projectName;
+        this.panelKey = key;
+        this.isCreateMode = isCreateMode;
+        this.projectInfo = projectInfo;
 
         // Set initial HTML content
         this.update();
@@ -49,9 +60,10 @@ export class ProfileInfoPanel {
                         this.panel.dispose();
                         break;
                     case 'openFile':
-                        // Open the .pubxml file in editor
-                        const uri = vscode.Uri.file(this.currentProfileInfo.path);
-                        await vscode.window.showTextDocument(uri, { preview: false });
+                        if (this.currentProfileInfo.path) {
+                            const uri = vscode.Uri.file(this.currentProfileInfo.path);
+                            await vscode.window.showTextDocument(uri, { preview: false });
+                        }
                         break;
                     case 'deploy':
                         await vscode.commands.executeCommand('dotnet-project-toolkit.deployProfile', {
@@ -110,10 +122,12 @@ export class ProfileInfoPanel {
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
 
-        // If panel exists, update it with new data and reveal
-        if (ProfileInfoPanel.currentPanel) {
-            ProfileInfoPanel.currentPanel.updateWithProfile(profileInfo, projectName);
-            ProfileInfoPanel.currentPanel.panel.reveal(column);
+        // Generate unique key for this profile view
+        const key = `view:${projectName}:${profileInfo.fileName}`;
+
+        // If panel exists, reveal it
+        if (ProfileInfoPanel.panels.has(key)) {
+            ProfileInfoPanel.panels.get(key)?.panel.reveal(column);
             return;
         }
 
@@ -129,7 +143,7 @@ export class ProfileInfoPanel {
             }
         );
 
-        ProfileInfoPanel.currentPanel = new ProfileInfoPanel(
+        const instance = new ProfileInfoPanel(
             panel,
             extensionUri,
             profileInfo,
@@ -138,45 +152,129 @@ export class ProfileInfoPanel {
             passwordStorage,
             historyManager,
             outputChannel,
-            onRefresh
+            onRefresh,
+            key
         );
+
+        ProfileInfoPanel.panels.set(key, instance);
     }
+
+    /**
+     * Show panel for creating a new profile
+     */
+    public static showForCreate(
+        extensionUri: vscode.Uri,
+        projectInfo: ProjectInfo,
+        profileName: string,
+        environment: 'uat' | 'prod' | 'dev',
+        profileService: IProfileService,
+        passwordStorage: IPasswordStorage,
+        historyManager: HistoryManager,
+        outputChannel: vscode.OutputChannel,
+        onRefresh: () => void
+    ) {
+        const column = vscode.window.activeTextEditor
+            ? vscode.window.activeTextEditor.viewColumn
+            : undefined;
+
+        // Generate unique key for creation
+        const key = `create:${projectInfo.name}:${profileName}`;
+
+        // If panel exists for this creation attempt, reveal it
+        if (ProfileInfoPanel.panels.has(key)) {
+            ProfileInfoPanel.panels.get(key)?.panel.reveal(column);
+            return;
+        }
+
+        // Create new panel
+        const panel = vscode.window.createWebviewPanel(
+            'profileInfo',
+            `New Profile: ${profileName}`,
+            column || vscode.ViewColumn.One,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true,
+                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
+            }
+        );
+
+        // Create empty profile info for the form
+        const emptyProfileInfo: PublishProfileInfo = {
+            name: profileName,
+            path: '', // Will be set when saved
+            fileName: profileName,
+            environment: environment,
+            isProduction: environment === 'prod',
+            publishUrl: '',
+            siteName: '',
+            siteUrl: '',
+            userName: ''
+        };
+
+        const instance = new ProfileInfoPanel(
+            panel,
+            extensionUri,
+            emptyProfileInfo,
+            projectInfo.name,
+            profileService,
+            passwordStorage,
+            historyManager,
+            outputChannel,
+            onRefresh,
+            key,
+            true, // isCreateMode
+            projectInfo
+        );
+
+        ProfileInfoPanel.panels.set(key, instance);
+    }
+
 
     private async saveProfile(data: ProfileWizardData) {
         try {
             this.outputChannel.appendLine(`[ProfileInfo] Saving: ${data.profileName}`);
 
-            // Create project info for service
-            const projectInfo: ProjectInfo = {
-                name: this.currentProjectName,
-                projectDir: this.currentProfileInfo.path.replace(/[\\\/]Properties[\\\/]PublishProfiles[\\\/][^\\\/]+$/, ''),
-                csprojPath: '',
-                projectType: 'unknown',
-                profiles: []
-            };
+            // Get project info
+            let projectInfo: ProjectInfo;
+            if (this.isCreateMode && this.projectInfo) {
+                projectInfo = this.projectInfo;
+            } else {
+                projectInfo = {
+                    name: this.currentProjectName,
+                    projectDir: this.currentProfileInfo.path.replace(/[\\\/]Properties[\\\/]PublishProfiles[\\\/][^\\\/]+$/, ''),
+                    csprojPath: '',
+                    projectType: 'unknown',
+                    profiles: []
+                };
+            }
 
-            // Save profile
-            const success = await this.profileService.create(projectInfo, data);
+            // Save profile (create or update)
+            const profilePath = await this.profileService.create(projectInfo, data);
 
-            if (success) {
-                // Save password if changed
+            if (profilePath) {
+                // Save password if provided
                 if (data.password && data.password !== 'KEEP_EXISTING') {
                     const passwordKey = this.passwordStorage.generateKey(this.currentProjectName, data.profileName);
                     await this.passwordStorage.store(passwordKey, data.password);
                 }
 
-                vscode.window.showInformationMessage(`✅ Profile "${data.profileName}" saved!`);
+                const message = this.isCreateMode
+                    ? `✅ Profile "${data.profileName}" created successfully!`
+                    : `✅ Profile "${data.profileName}" saved!`;
+                vscode.window.showInformationMessage(message);
 
-                // Reload profile info from disk to get updated properties
-                const updatedProfile = this.profileService.parse(this.currentProfileInfo.path);
+                // Reload profile info from disk
+                const updatedProfile = this.profileService.parse(profilePath);
                 if (updatedProfile) {
                     this.currentProfileInfo = updatedProfile;
+                    this.currentProfileInfo.path = profilePath;
                     this.panel.title = `${this.currentProjectName} / ${updatedProfile.fileName}`;
+                    this.isCreateMode = false; // Switch to edit mode after first save
                 }
 
                 this.onRefresh();
                 this.update(); // Re-render webview with new data
-                this.outputChannel.appendLine(`[ProfileInfo] ✓ Saved and reloaded successfully`);
+                this.outputChannel.appendLine(`[ProfileInfo] ✓ Saved successfully`);
             }
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to save: ${error}`);
@@ -205,7 +303,8 @@ export class ProfileInfoPanel {
             siteUrl: profile.siteUrl,
             username: profile.userName,
             passwordKey: passwordKey,
-            isDeploying: this.isDeploying(profile.fileName)
+            isDeploying: this.isDeploying(profile.fileName),
+            isCreateMode: this.isCreateMode
         };
 
         if (this.panel && this.panel.webview) {
@@ -300,7 +399,7 @@ export class ProfileInfoPanel {
     }
 
     public dispose() {
-        ProfileInfoPanel.currentPanel = undefined;
+        ProfileInfoPanel.panels.delete(this.panelKey);
         this.panel.dispose();
         while (this.disposables.length) {
             const d = this.disposables.pop();

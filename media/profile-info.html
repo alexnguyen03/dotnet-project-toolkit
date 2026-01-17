@@ -11,29 +11,36 @@
 
 <body>
     <div class="header">
-        <div class="title-row">
-            <div class="titles">
-                <h1 class="project-header">
-                    📦 <span id="displayProjectName"></span>
-                </h1>
-                <h2 class="profile-subheader" id="profileNameHeader" title="Click to open .pubxml file">
-                    <span id="displayProfileName"></span>
-                </h2>
+        <div class="header-content">
+            <!-- LEFT COLUMN -->
+            <div class="header-left">
+                <!-- Row 1: Edit Profile : Profile Name -->
+                <div class="header-title-row">
+                    <span id="modeHeader" class="mode-text"></span>
+                    <span>:</span>
+                    <span id="displayProfileName" class="profile-name-text"></span>
+                </div>
+                <!-- Row 2: Project Name -->
+                <div class="project-name-row">
+                    <span id="displayProjectName"></span>
+                </div>
             </div>
-            <div class="toolbar">
-                <span id="envBadge" class="badge"></span>
-                <div id="deployBtnContainer">
-                    <button type="button" class="btn-success" id="btnDeploy" title="Deploy to this environment">
-                        🚀 Deploy
-                    </button>
+
+            <!-- RIGHT COLUMN -->
+            <div class="header-right">
+                <!-- Row 1: Brand -->
+                <div class="brand-name">.NET Project Toolkit</div>
+                <!-- Row 2: Badge & Buttons -->
+                <div class="toolbar-actions">
+                    <span id="envBadge" class="badge"></span>
+                    <div id="deployBtnContainer">
+                        <button type="button" class="btn-success" id="btnDeploy" title="Deploy to this environment">
+                            Deploy
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="info-box">
-        <strong>Password Variable:</strong> <code id="displayPasswordKey"></code><br>
-        <small>Used when deploying: <code id="displayPasswordKeyUsage"></code></small>
     </div>
 
     <form id="profileForm">
@@ -52,25 +59,31 @@
             <input type="text" id="publishUrl" placeholder="192.168.10.3">
         </div>
 
-        <div class="form-group">
-            <label>IIS Site Name</label>
-            <input type="text" id="siteName" placeholder="TS_BUDGETCTRL_API_UAT">
+        <!-- Site Name & Site URL split row -->
+        <div class="form-row-split">
+            <div class="form-group">
+                <label>IIS Site Name</label>
+                <input type="text" id="siteName" placeholder="TS_BUDGETCTRL_API_UAT">
+            </div>
+
+            <div class="form-group">
+                <label>Site URL (for browser launch)</label>
+                <input type="text" id="siteUrl" placeholder="https://example.com">
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>Site URL (for browser launch)</label>
-            <input type="text" id="siteUrl" placeholder="https://example.com">
-        </div>
+        <!-- Username & Password split row -->
+        <div class="form-row-split">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="namnh">
+            </div>
 
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="username" placeholder="namnh">
-        </div>
-
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="password" placeholder="Leave empty to keep existing">
-            <div class="hint">Only enter if you want to change the password</div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Leave empty to keep existing">
+                <div class="hint">Only enter if you want to change the password</div>
+            </div>
         </div>
 
         <div class="actions">
