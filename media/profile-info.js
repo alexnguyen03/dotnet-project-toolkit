@@ -56,58 +56,118 @@ function init(data) {
     if (userInput) userInput.value = data.username || '';
 
     // Deploy Status
+    const container = document.getElementById('deployBtnContainer');
     if (data.isDeploying) {
-        const container = document.getElementById('deployBtnContainer');
         if (container) {
             container.innerHTML = `
-    < button type = "button" class="btn-success" disabled title = "Deployment in progress..." >
-        <div class="spinner"></div> Deploying...
-                </button > `;
+                <button type="button" class="btn-success" disabled title="Deployment in progress...">
+                    <div class="spinner"></div> Deploying...
+                </button>`;
         }
 
         // Disable form
         const inputs = document.querySelectorAll('input, select, button');
         inputs.forEach(el => el.disabled = true);
+    } else {
+        // Restore normal state
+        if (container) {
+            container.innerHTML = `
+                <button type="button" class="btn-success" id="btnDeploy" title="Deploy to this environment">
+                    🚀 Deploy
+                </button>`;
+
+            // Re-attach event listener after recreating button
+            const deployBtn = document.getElementById('btnDeploy');
+            if (deployBtn) {
+                deployBtn.addEventListener('click', () => {
+                    vscode.postMessage({ command: 'deploy' });
+                });
+            }
+        }
+
+        // Enable form
+        const inputs = document.querySelectorAll('input, select, button');
+        inputs.forEach(el => el.disabled = false);
     }
 }
 
 // Signal that webview is ready to receive data
 vscode.postMessage({ command: 'ready' });
 
-document.getElementById('profileForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    // Validate required fields
-    const publishUrl = document.getElementById('publishUrl').value.trim();
-    const siteName = document.getElementById('siteName').value.trim();
-    const username = document.getElementById('username').value.trim();
-
-    let errors = [];
-    if (!publishUrl) errors.push('Publish URL is required');
-    if (!siteName) errors.push('Site Name is required');
-    if (!username) errors.push('Username is required');
-
-    // Show validation errors
-    clearErrors();
-    if (errors.length > 0) {
-        showErrors(errors);
-        return;
+// Setup event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Profile name header click
+    const profileHeader = document.getElementById('profileNameHeader');
+    if (profileHeader) {
+        profileHeader.addEventListener('click', () => {
+            vscode.postMessage({ command: 'openFile' });
+        });
     }
 
-    const submitData = {
-        profileName: data.profileFileName, // Use original file name as ID
-        environment: document.getElementById('environment').value,
-        publishUrl: publishUrl,
-        siteName: siteName,
-        siteUrl: document.getElementById('siteUrl').value || undefined,
-        username: username,
-        password: document.getElementById('password').value || 'KEEP_EXISTING'
-    };
+    // Deploy button
+    const deployBtn = document.getElementById('btnDeploy');
+    if (deployBtn) {
+        deployBtn.addEventListener('click', () => {
+            vscode.postMessage({ command: 'deploy' });
+        });
+    }
 
-    vscode.postMessage({ command: 'save', data: submitData });
+    // Cancel button
+    const cancelBtn = document.getElementById('btnCancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', resetForm);
+    }
+
+    // Delete button
+    const deleteBtn = document.getElementById('btnDelete');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            vscode.postMessage({ command: 'delete' });
+        });
+    }
 });
 
-function resetForm() {
+const form = document.getElementById('profileForm');
+if (form) {
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        // Validate required fields
+        const publishUrl = document.getElementById('publishUrl').value.trim();
+        const siteName = document.getElementById('siteName').value.trim();
+        const username = document.getElementById('username').value.trim();
+
+        let errors = [];
+        if (!publishUrl) errors.push('Publish URL is required');
+        if (!siteName) errors.push('Site Name is required');
+        if (!username) errors.push('Username is required');
+
+        // Show validation errors
+        clearErrors();
+        if (errors.length > 0) {
+            showErrors(errors);
+            return;
+        }
+
+        const submitData = {
+            profileName: window.currentData.profileFileName, // Use original file name as ID
+            environment: document.getElementById('environment').value,
+            publishUrl: publishUrl,
+            siteName: siteName,
+            siteUrl: document.getElementById('siteUrl').value || undefined,
+            username: username,
+            password: document.getElementById('password').value || 'KEEP_EXISTING'
+        };
+
+        vscode.postMessage({ command: 'save', data: submitData });
+    });
+}
+
+// Expose functions to global scope for HTML onclick access
+window.resetForm = function () {
+    if (!window.currentData) return;
+    const data = window.currentData;
+
     document.getElementById('environment').value = data.environment;
     document.getElementById('publishUrl').value = data.publishUrl || '';
     document.getElementById('siteName').value = data.siteName || '';
@@ -127,20 +187,7 @@ function showErrors(errors) {
     errorBox.className = 'error-box';
     errorBox.innerHTML = '<strong>⚠️ Validation Errors:</strong><ul>' +
         errors.map(e => '<li>' + e + '</li>').join('') + '</ul>';
-    document.querySelector('.actions').before(errorBox);
-}
 
-function openFile() {
-    vscode.postMessage({ command: 'openFile' });
+    const actionsDiv = document.querySelector('.actions');
+    if (actionsDiv) actionsDiv.before(errorBox);
 }
-
-function deploy() {
-    vscode.postMessage({ command: 'deploy' });
-}
-
-function deleteProfile() {
-    vscode.postMessage({ command: 'delete' });
-}
-
-// Run init
-init();

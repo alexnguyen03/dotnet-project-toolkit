@@ -16,15 +16,14 @@
                 <h1 class="project-header">
                     📦 <span id="displayProjectName"></span>
                 </h1>
-                <h2 class="profile-subheader" onclick="openFile()" title="Click to open .pubxml file">
+                <h2 class="profile-subheader" id="profileNameHeader" title="Click to open .pubxml file">
                     <span id="displayProfileName"></span>
                 </h2>
             </div>
             <div class="toolbar">
                 <span id="envBadge" class="badge"></span>
                 <div id="deployBtnContainer">
-                    <button type="button" class="btn-success" onclick="deploy()" id="btnDeploy"
-                        title="Deploy to this environment">
+                    <button type="button" class="btn-success" id="btnDeploy" title="Deploy to this environment">
                         🚀 Deploy
                     </button>
                 </div>
@@ -77,9 +76,9 @@
         <div class="actions">
             <div class="actions-left">
                 <button type="submit" class="btn-primary">💾 Save Changes</button>
-                <button type="button" class="btn-secondary" onclick="resetForm()">Cancel</button>
+                <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
             </div>
-            <button type="button" class="btn-danger" onclick="deleteProfile()" title="Delete this profile">
+            <button type="button" class="btn-danger" id="btnDelete" title="Delete this profile">
                 🗑️ Delete
             </button>
         </div>
