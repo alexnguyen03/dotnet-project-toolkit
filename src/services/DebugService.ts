@@ -7,6 +7,8 @@ interface ActiveDebugSession {
     sessionId: string;
     csprojPath: string;
     projectName: string;
+    session?: vscode.DebugSession;
+    terminal?: vscode.Terminal;
 }
 
 export class DebugService {
@@ -188,7 +190,9 @@ export class DebugService {
             args: [],
             cwd: project.projectDir,
             stopAtEntry: false,
-            console: 'internalConsole'
+            console: 'internalConsole',
+            __csprojPath: project.csprojPath, // Internal tracking
+            __projectName: project.name      // Internal tracking
         };
 
         try {
@@ -227,7 +231,8 @@ export class DebugService {
         this.activeSessions.set(key, {
             sessionId: terminal.processId?.toString() || 'terminal',
             csprojPath: project.csprojPath,
-            projectName: project.name
+            projectName: project.name,
+            terminal: terminal
         });
 
         this._onDidChangeDebugSessions.fire();
@@ -266,13 +271,21 @@ export class DebugService {
      */
     public async stopDebugging(csprojPath: string): Promise<void> {
         const key = this.normalizePath(csprojPath);
-        const session = this.activeSessions.get(key);
+        const sessionInfo = this.activeSessions.get(key);
 
-        if (session) {
-            // Find the actual debug session
-            const activeSession = vscode.debug.activeDebugSession;
-            if (activeSession && activeSession.id === session.sessionId) {
-                await vscode.debug.stopDebugging(activeSession);
+        if (sessionInfo) {
+            if (sessionInfo.session) {
+                await vscode.debug.stopDebugging(sessionInfo.session);
+            } else if (sessionInfo.terminal) {
+                sessionInfo.terminal.dispose();
+            } else {
+                // Try to find session by ID if object missing (rare)
+                const activeSession = vscode.debug.activeDebugSession;
+                // Note: we can't iterate all debug sessions easily in 1.95+ API unless we track them, which we do now.
+                // This is a last resort fallback for 'terminal' or other weird states.
+                if (activeSession && activeSession.id === sessionInfo.sessionId) {
+                    await vscode.debug.stopDebugging(activeSession);
+                }
             }
         }
     }
@@ -315,16 +328,37 @@ export class DebugService {
         return Array.from(this.activeSessions.values());
     }
 
+    /**
+     * Stop all active debug sessions
+     */
+    public async stopAll(): Promise<void> {
+        for (const session of this.activeSessions.values()) {
+            await this.stopDebugging(session.csprojPath);
+        }
+    }
+
+    /**
+     * Check if there are any active debug sessions
+     */
+    public get hasActiveSessions(): boolean {
+        return this.activeSessions.size > 0;
+    }
+
     private handleSessionStarted(session: vscode.DebugSession) {
         // Try to match session to a project by looking at the configuration
         const config = session.configuration;
-        if (config && config.program) {
-            // Extract project info from the program path
-            // This is a best-effort approach
-            const programPath = config.program as string;
+        if (config && config.__csprojPath) {
+            const csprojPath = config.__csprojPath as string;
+            const projectName = config.__projectName as string || 'Unknown';
+            const key = this.normalizePath(csprojPath);
 
-            // Store session info
-            // Note: We'll need to enhance this to properly map sessions to projects
+            this.activeSessions.set(key, {
+                sessionId: session.id,
+                csprojPath: csprojPath,
+                projectName: projectName,
+                session: session
+            });
+
             this._onDidChangeDebugSessions.fire();
         }
     }
@@ -344,6 +378,13 @@ export class DebugService {
         // Stop all active debug sessions
         if (vscode.debug.activeDebugSession) {
             vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
+        }
+
+        // Stop all terminal sessions
+        for (const session of this.activeSessions.values()) {
+            if (session.terminal) {
+                session.terminal.dispose();
+            }
         }
     }
 }

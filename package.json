@@ -166,6 +166,11 @@
         "command": "dotnet-project-toolkit.debug.deleteGroup",
         "title": "Delete Debug Group",
         "icon": "$(trash)"
+      },
+      {
+        "command": "dotnet-project-toolkit.debug.stopAll",
+        "title": "Stop All Debugging",
+        "icon": "$(debug-stop)"
       }
     ],
     "viewsContainers": {
@@ -364,6 +369,11 @@
         {
           "command": "dotnet-project-toolkit.debug.createGroup",
           "when": "view == dotnetDebug && viewItem == debugGroupsContainer",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.stopAll",
+          "when": "view == dotnetDebug && viewItem == debugProjectsContainerRunning",
           "group": "inline"
         },
         {

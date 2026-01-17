@@ -36,13 +36,13 @@ export class DebugTreeProvider implements vscode.TreeDataProvider<DebugTreeItem>
 				return [
 					new DebugWarningItem('⚠️ No C# Debugger Detected'),
 					new GroupContainerItem('Debug Groups', 'groups', 'debugGroupsContainer'),
-					new ProjectContainerItem('All Projects', 'projects')
+					new ProjectContainerItem('All Projects', 'projects', this.debugService.hasActiveSessions)
 				];
 			}
 
 			return [
 				new GroupContainerItem('Debug Groups', 'groups', 'debugGroupsContainer'),
-				new ProjectContainerItem('All Projects', 'projects')
+				new ProjectContainerItem('All Projects', 'projects', this.debugService.hasActiveSessions)
 			];
 		}
 
@@ -84,9 +84,9 @@ export class GroupContainerItem extends vscode.TreeItem {
 }
 
 export class ProjectContainerItem extends vscode.TreeItem {
-	constructor(label: string, public readonly id: string) {
+	constructor(label: string, public readonly id: string, hasActiveSessions: boolean) {
 		super(label, vscode.TreeItemCollapsibleState.Collapsed);
-		this.contextValue = 'projectContainer';
+		this.contextValue = hasActiveSessions ? 'debugProjectsContainerRunning' : 'projectContainer';
 	}
 }
 

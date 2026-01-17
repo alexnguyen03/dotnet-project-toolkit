@@ -312,6 +312,10 @@ export class ServiceContainer {
                         container.debugTreeProvider.refresh();
                     }
                 }
+            }),
+            vscode.commands.registerCommand('dotnet-project-toolkit.debug.stopAll', async () => {
+                await container.debugService.stopAll();
+                container.debugTreeProvider.refresh();
             })
         );
 
