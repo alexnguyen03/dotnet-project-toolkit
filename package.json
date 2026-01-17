@@ -9,7 +9,7 @@
     "url": "https://github.com/yourpublisher/dotnet-project-toolkit"
   },
   "engines": {
-    "vscode": "^1.108.1"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Other",
@@ -67,6 +67,21 @@
         "command": "dotnet-project-toolkit.refreshProfiles",
         "title": ".NET Toolkit: Refresh Publish Profiles",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "dotnet-project-toolkit.refreshHistory",
+        "title": ".NET Toolkit: Refresh Deployment History",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "dotnet-project-toolkit.clearHistory",
+        "title": ".NET Toolkit: Clear All Deployment History",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "dotnet-project-toolkit.clearHistoryEntry",
+        "title": ".NET Toolkit: Clear History Entry",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
@@ -106,6 +121,31 @@
         }
       ]
     },
+    "menus": {
+      "view/title": [
+        {
+          "command": "dotnet-project-toolkit.refreshProfiles",
+          "when": "view == dotnetPublish",
+          "group": "navigation"
+        },
+        {
+          "command": "dotnet-project-toolkit.refreshHistory",
+          "when": "view == dotnetHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "dotnet-project-toolkit.clearHistory",
+          "when": "view == dotnetHistory"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "dotnet-project-toolkit.clearHistoryEntry",
+          "when": "view == dotnetHistory && viewItem == deployment",
+          "group": "inline"
+        }
+      ]
+    },
     "configuration": {
       "title": ".NET Project Toolkit",
       "properties": {
@@ -128,6 +168,16 @@
           "type": "boolean",
           "default": true,
           "description": "Confirm before deploying to production"
+        },
+        "dotnetToolkit.historyMaxEntries": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of deployment history entries to keep"
+        },
+        "dotnetToolkit.historyGroupByDate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Group deployment history by date (Today, Yesterday, This Week, Older)"
         }
       }
     }
@@ -149,7 +199,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.108.1",
+    "@types/vscode": "^1.90.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.2",

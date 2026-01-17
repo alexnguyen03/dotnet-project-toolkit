@@ -4,7 +4,7 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 	private _onDidChangeTreeData: vscode.EventEmitter<PublishTreeItem | undefined | null | void> = new vscode.EventEmitter<PublishTreeItem | undefined | null | void>();
 	readonly onDidChangeTreeData: vscode.Event<PublishTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-	constructor(private workspaceRoot: string | undefined) {}
+	constructor(private workspaceRoot: string | undefined) { }
 
 	refresh(): void {
 		this._onDidChangeTreeData.fire();
@@ -68,22 +68,28 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 		}
 
 		if (element.contextValue === 'project') {
-			// Project level - show "Profiles" folder
+			// Project level - show "Profiles" folder, pass parent project name
 			return [
 				new PublishTreeItem(
 					'Profiles',
 					vscode.TreeItemCollapsibleState.Expanded,
-					'profileFolder'
+					'profileFolder',
+					false,
+					element.label // Pass the parent project name
 				)
 			];
 		}
 
 		if (element.contextValue === 'profileFolder') {
 			// Profiles folder - show actual profiles (mock data)
-			const parentProject = element.label as string;
+			// Get parent project name from the parentProject property
+			const parentProject = element.parentProject || '';
+			console.log('[PublishTreeProvider] profileFolder - parentProject:', parentProject);
+			console.log('[PublishTreeProvider] element.label:', element.label);
 			const profiles: PublishTreeItem[] = [];
-			
+
 			if (parentProject.includes('Api')) {
+				console.log('[PublishTreeProvider] Loading API profiles');
 				profiles.push(
 					new PublishTreeItem(
 						'uat-api [UAT]',
@@ -100,6 +106,7 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 					)
 				);
 			} else if (parentProject.includes('Web')) {
+				console.log('[PublishTreeProvider] Loading Web profiles');
 				profiles.push(
 					new PublishTreeItem(
 						'uat-web [UAT]',
@@ -115,8 +122,10 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 						true
 					)
 				);
+			} else {
+				console.log('[PublishTreeProvider] No matching profiles for:', parentProject);
 			}
-			
+
 			return profiles;
 		}
 
@@ -129,7 +138,8 @@ export class PublishTreeItem extends vscode.TreeItem {
 		public readonly label: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly contextValue: string,
-		public readonly isProd: boolean = false
+		public readonly isProd: boolean = false,
+		public readonly parentProject?: string
 	) {
 		super(label, collapsibleState);
 		this.tooltip = this.label;
@@ -152,10 +162,10 @@ export class PublishTreeItem extends vscode.TreeItem {
 				this.iconPath = new vscode.ThemeIcon('folder-opened');
 				break;
 			case 'publishProfile':
-				this.iconPath = this.isProd 
+				this.iconPath = this.isProd
 					? new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'))
 					: new vscode.ThemeIcon('file-code');
-				
+
 				// Add inline deploy button
 				this.command = {
 					command: 'dotnet-project-toolkit.deployProfile',
