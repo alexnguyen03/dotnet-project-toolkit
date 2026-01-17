@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ProjectInfo, WorkspaceStructure } from '../models/ProjectModels';
+import { ProjectInfo, WorkspaceStructure, DeployEnvironment, PublishProfileInfo } from '../models/ProjectModels';
 import { PublishProfileParser } from './PublishProfileParser';
 
 /**
@@ -133,8 +133,8 @@ export class ProjectScanner {
     /**
      * Find all publish profiles for a given project
      */
-    private async findPublishProfiles(projectDir: string): Promise<any[]> {
-        const profiles: any[] = [];
+    private async findPublishProfiles(projectDir: string): Promise<PublishProfileInfo[]> {
+        const profiles: PublishProfileInfo[] = [];
         const publishProfilesDir = path.join(projectDir, 'Properties', 'PublishProfiles');
 
         if (!fs.existsSync(publishProfilesDir)) {
@@ -160,7 +160,12 @@ export class ProjectScanner {
 
         // Sort profiles: DEV -> UAT -> PROD
         return profiles.sort((a, b) => {
-            const order: Record<string, number> = { dev: 1, staging: 2, production: 3, unknown: 4 };
+            const order: Record<string, number> = {
+                [DeployEnvironment.Development]: 1,
+                [DeployEnvironment.Staging]: 2,
+                [DeployEnvironment.Production]: 3,
+                [DeployEnvironment.Unknown]: 4
+            };
             return (order[a.environment] || 99) - (order[b.environment] || 99);
         });
     }

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { BaseCommand } from './ICommand';
-import { ProjectInfo } from '../models/ProjectModels';
+import { ProjectInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IProfileService, ProfileWizardData } from '../services/ProfileService';
 
 /**
@@ -47,9 +47,9 @@ export class CreateProfileCommand extends BaseCommand {
 
         // Auto-detect environment or default to dev
         const lowerName = profileName.toLowerCase();
-        let env: 'staging' | 'production' | 'dev' = 'dev';
-        if (lowerName.includes('staging') || lowerName.includes('uat')) env = 'staging';
-        if (lowerName.includes('production') || lowerName.includes('prod')) env = 'production';
+        let env: DeployEnvironment = DeployEnvironment.Development;
+        if (lowerName.includes('staging') || lowerName.includes('uat')) env = DeployEnvironment.Staging;
+        if (lowerName.includes('production') || lowerName.includes('prod')) env = DeployEnvironment.Production;
 
         this.log(`Opening profile panel for new profile: ${profileName}`);
 

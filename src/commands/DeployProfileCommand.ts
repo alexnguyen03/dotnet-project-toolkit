@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ICommand } from './ICommand';
 import { PublishTreeItem } from '../ui/publish/PublishTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
-import { PublishProfileInfo } from '../models/ProjectModels';
+import { PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
 
 /**
  * Deploy Profile Command
@@ -28,10 +28,10 @@ export class DeployProfileCommand implements ICommand {
         const environment = profile.environment.toUpperCase();
 
         // 1. Confirm deployment (for ALL environments)
-        const isProd = profile.environment === 'production';
+        const isProd = profile.environment === DeployEnvironment.Production;
         const confirmMessage = isProd
-            ? `⚠️ Deploy to PRODUCTION: ${profile.name}?`
-            : `Deploy to ${environment}: ${profile.name}?`;
+            ? `⚠️ Deploy to PRODUCTION environment with profile: ${profile.name}?`
+            : `Deploy to ${environment} environment with profile: ${profile.name}?`;
 
         const confirm = await vscode.window.showWarningMessage(
             confirmMessage,

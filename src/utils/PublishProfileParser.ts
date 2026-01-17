@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { XMLParser } from 'fast-xml-parser';
-import { PublishProfileInfo } from '../models/ProjectModels';
+import { PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
 
 /**
  * Parser for .NET publish profile (.pubxml) files
@@ -47,7 +47,7 @@ export class PublishProfileParser {
                 path: pubxmlPath,
                 fileName: fileName,
                 environment: environment,
-                isProduction: environment === 'production',
+                isProduction: environment === DeployEnvironment.Production,
                 publishUrl: publishUrl,
                 publishMethod: publishMethod,
                 siteUrl: siteUrl,
@@ -63,7 +63,7 @@ export class PublishProfileParser {
     /**
      * Detect environment from XML EnvironmentName field
      */
-    private detectEnvironmentFromXml(environmentName: string | undefined): 'staging' | 'production' | 'dev' | null {
+    private detectEnvironmentFromXml(environmentName: string | undefined): DeployEnvironment | null {
         if (!environmentName) {
             return null;
         }
@@ -71,13 +71,13 @@ export class PublishProfileParser {
         const lowerName = environmentName.toLowerCase();
 
         if (lowerName === 'production') {
-            return 'production';
+            return DeployEnvironment.Production;
         }
-        if (lowerName === 'staging' || lowerName === 'staging') {
-            return 'staging';
+        if (lowerName === 'staging' || lowerName === 'uat') {
+            return DeployEnvironment.Staging;
         }
         if (lowerName === 'development' || lowerName === 'dev') {
-            return 'dev';
+            return DeployEnvironment.Development;
         }
 
         return null;
@@ -87,33 +87,27 @@ export class PublishProfileParser {
      * Detect environment from profile filename
      * Examples: "uat-api" -> "uat", "prod-web" -> "prod"
      */
-    private detectEnvironment(fileName: string): 'staging' | 'production' | 'dev' | 'unknown' {
+    private detectEnvironment(fileName: string): DeployEnvironment {
         const lowerName = fileName.toLowerCase();
 
         if (lowerName.includes('prod') || lowerName.includes('production')) {
-            return 'production';
+            return DeployEnvironment.Production;
         }
-        if (lowerName.includes('staging')) {
-            return 'staging';
+        if (lowerName.includes('staging') || lowerName.includes('uat')) {
+            return DeployEnvironment.Staging;
         }
         if (lowerName.includes('dev') || lowerName.includes('development')) {
-            return 'dev';
+            return DeployEnvironment.Development;
         }
 
-        return 'unknown';
+        return DeployEnvironment.Unknown;
     }
 
     /**
      * Format display name for the profile
      * Examples: "uat-api" -> "uat-api [UAT]", "prod-web" -> "prod-web [PROD]"
      */
-    private formatDisplayName(fileName: string, environment: string): string {
-        const envLabel = environment.toUpperCase();
-
-        if (environment === 'unknown') {
-            return fileName;
-        }
-
-        return `${fileName} [${envLabel}]`;
+    private formatDisplayName(fileName: string, environment: DeployEnvironment): string {
+        return fileName;
     }
 }

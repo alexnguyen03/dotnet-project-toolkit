@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { XMLParser } from 'fast-xml-parser';
-import { ProjectInfo, PublishProfileInfo } from '../models/ProjectModels';
+import { ProjectInfo, PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
 
 /**
@@ -10,7 +10,7 @@ import { IPasswordStorage } from '../strategies/IPasswordStorage';
  */
 export interface ProfileWizardData {
     profileName: string;
-    environment: 'staging' | 'production' | 'dev';
+    environment: DeployEnvironment;
     publishUrl: string;
     siteName: string;
     username: string;
@@ -106,7 +106,7 @@ export class ProfileService implements IProfileService {
                 path: pubxmlPath,
                 fileName,
                 environment,
-                isProduction: environment === 'production',
+                isProduction: environment === DeployEnvironment.Production,
                 publishUrl: props?.MSDeployServiceURL || props?.PublishUrl,
                 publishMethod: props?.WebPublishMethod,
             };
@@ -138,7 +138,7 @@ export class ProfileService implements IProfileService {
     private generatePubxmlContent(data: ProfileWizardData, targetFramework: string): string {
         const siteUrl = data.siteUrl || `https://${data.publishUrl}`;
         const guid = this.generateGuid();
-        const envName = data.environment === 'production' ? 'Production' : 'Staging';
+        const envName = data.environment === DeployEnvironment.Production ? 'Production' : (data.environment === DeployEnvironment.Staging ? 'Staging' : 'Development');
 
         return `<?xml version="1.0" encoding="utf-8"?>
 <!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
@@ -190,23 +190,23 @@ export class ProfileService implements IProfileService {
         return filePath;
     }
 
-    private detectEnvironment(envName: string | undefined, fileName: string): 'staging' | 'production' | 'dev' | 'unknown' {
+    private detectEnvironment(envName: string | undefined, fileName: string): DeployEnvironment {
         if (envName) {
             const lower = envName.toLowerCase();
-            if (lower === 'production' || lower === 'prod') return 'production';
-            if (lower === 'staging' || lower === 'uat') return 'staging';
-            if (lower === 'development' || lower === 'dev') return 'dev';
+            if (lower === 'production' || lower === 'prod') return DeployEnvironment.Production;
+            if (lower === 'staging' || lower === 'uat') return DeployEnvironment.Staging;
+            if (lower === 'development' || lower === 'dev') return DeployEnvironment.Development;
         }
 
         const lower = fileName.toLowerCase();
-        if (lower.includes('production') || lower.includes('prod')) return 'production';
-        if (lower.includes('staging') || lower.includes('uat')) return 'staging';
-        if (lower.includes('dev')) return 'dev';
-        return 'unknown';
+        if (lower.includes('production') || lower.includes('prod')) return DeployEnvironment.Production;
+        if (lower.includes('staging') || lower.includes('uat')) return DeployEnvironment.Staging;
+        if (lower.includes('dev')) return DeployEnvironment.Development;
+        return DeployEnvironment.Unknown;
     }
 
-    private formatDisplayName(fileName: string, env: string): string {
-        return env === 'unknown' ? fileName : `${fileName} [${env.toUpperCase()}]`;
+    private formatDisplayName(fileName: string, env: DeployEnvironment): string {
+        return fileName;
     }
 
     private generateGuid(): string {

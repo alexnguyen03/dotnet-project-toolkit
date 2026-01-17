@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { BaseCommand } from './ICommand';
-import { PublishProfileInfo } from '../models/ProjectModels';
+import { PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IProfileService, ProfileWizardData } from '../services/ProfileService';
 
 /**
@@ -72,11 +72,11 @@ export class EditProfileCommand extends BaseCommand {
         vscode.window.showInformationMessage(`Editing profile: ${profileName}`);
 
         // Step 2: Environment
-        const currentEnv = existing.environment === 'unknown' ? 'staging' : existing.environment;
+        const currentEnv = existing.environment === DeployEnvironment.Unknown ? DeployEnvironment.Staging : existing.environment;
         const env = await vscode.window.showQuickPick([
-            { label: 'Staging', value: 'staging' as const, description: currentEnv === 'staging' ? '(current)' : '' },
-            { label: 'Production', value: 'production' as const, description: currentEnv === 'production' ? '(current)' : '' },
-            { label: 'Development', value: 'dev' as const, description: currentEnv === 'dev' ? '(current)' : '' },
+            { label: 'Staging', value: DeployEnvironment.Staging, description: currentEnv === DeployEnvironment.Staging ? '(current)' : '' },
+            { label: 'Production', value: DeployEnvironment.Production, description: currentEnv === DeployEnvironment.Production ? '(current)' : '' },
+            { label: 'Development', value: DeployEnvironment.Development, description: currentEnv === DeployEnvironment.Development ? '(current)' : '' },
         ], { placeHolder: `Current: ${currentEnv.toUpperCase()}` });
         if (!env) return undefined;
 

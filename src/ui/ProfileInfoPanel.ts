@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { PublishProfileInfo, ProjectInfo } from '../models/ProjectModels';
+import { PublishProfileInfo, ProjectInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IProfileService, ProfileWizardData } from '../services/ProfileService';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
 import { HistoryManager } from '../services/HistoryManager';
@@ -187,7 +187,7 @@ export class ProfileInfoPanel {
         extensionUri: vscode.Uri,
         projectInfo: ProjectInfo,
         profileName: string,
-        environment: 'staging' | 'production' | 'dev',
+        environment: DeployEnvironment,
         profileService: IProfileService,
         passwordStorage: IPasswordStorage,
         historyManager: HistoryManager,
@@ -225,7 +225,7 @@ export class ProfileInfoPanel {
             path: '', // Will be set when saved
             fileName: profileName,
             environment: environment,
-            isProduction: environment === 'production',
+            isProduction: environment === DeployEnvironment.Production,
             publishUrl: '',
             siteName: '',
             siteUrl: '',
@@ -294,7 +294,7 @@ export class ProfileInfoPanel {
                     path: profilePath,
                     fileName: data.profileName,
                     environment: data.environment,
-                    isProduction: data.environment === 'production',
+                    isProduction: data.environment === DeployEnvironment.Production,
                     publishUrl: data.publishUrl,
                     siteName: data.siteName,
                     siteUrl: data.siteUrl || '',

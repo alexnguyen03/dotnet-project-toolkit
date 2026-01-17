@@ -2,6 +2,13 @@
  * Model definitions for .NET projects and publish profiles
  */
 
+export enum DeployEnvironment {
+    Development = 'dev',
+    Staging = 'staging',
+    Production = 'production',
+    Unknown = 'unknown'
+}
+
 export interface PublishProfileInfo {
     /** Display name for the profile (e.g., "uat-api [UAT]") */
     name: string;
@@ -13,7 +20,7 @@ export interface PublishProfileInfo {
     fileName: string;
 
     /** Detected environment type */
-    environment: 'staging' | 'production' | 'dev' | 'unknown';
+    environment: DeployEnvironment;
 
     /** Whether this is a production profile */
     isProduction: boolean;

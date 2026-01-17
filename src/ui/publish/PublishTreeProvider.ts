@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectScanner } from '../../utils/ProjectScanner';
-import { ProjectInfo, PublishProfileInfo } from '../../models/ProjectModels';
+import { ProjectInfo, PublishProfileInfo, DeployEnvironment } from '../../models/ProjectModels';
 
 export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<PublishTreeItem | undefined | null | void> = new vscode.EventEmitter<PublishTreeItem | undefined | null | void>();
@@ -161,18 +161,17 @@ export class PublishTreeItem extends vscode.TreeItem {
 				if (this.profileInfo) {
 					// Environment-specific colored icons
 					const env = this.profileInfo.environment;
-					if (env === 'production') {
+					if (env === DeployEnvironment.Production) {
 						this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
-						this.description = '🔴 PRODUCTION';
-					} else if (env === 'staging') {
+						this.description = 'PRODUCTION';
+					} else if (env === DeployEnvironment.Staging) {
 						this.iconPath = new vscode.ThemeIcon('beaker', new vscode.ThemeColor('charts.blue'));
-						this.description = '🔵 STAGING';
-					} else if (env === 'dev') {
+						this.description = 'STAGING';
+					} else if (env === DeployEnvironment.Development) {
 						this.iconPath = new vscode.ThemeIcon('code', new vscode.ThemeColor('charts.green'));
-						this.description = '🟢 DEV';
+						this.description = 'DEV';
 					} else {
 						this.iconPath = new vscode.ThemeIcon('circle-outline');
-						this.description = '⚪';
 					}
 
 					// Click to open profile info panel
