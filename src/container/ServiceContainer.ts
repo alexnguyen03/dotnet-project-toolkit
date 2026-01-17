@@ -21,6 +21,7 @@ import { ProjectScanner } from '../utils/ProjectScanner';
 import { DebugService } from '../services/DebugService';
 import { DebugConfigService } from '../services/DebugConfigService';
 import { DebugTreeProvider } from '../ui/debug/DebugTreeProvider';
+import { PublishTreeProvider } from '../ui/publish/PublishTreeProvider';
 
 /**
  * Service Container - Dependency Injection
@@ -41,6 +42,7 @@ export class ServiceContainer {
     readonly debugService: DebugService;
     readonly debugConfigService: DebugConfigService;
     readonly debugTreeProvider: DebugTreeProvider;
+    readonly publishTreeProvider: PublishTreeProvider;
 
     private constructor(context: vscode.ExtensionContext) {
         // Create output channel
@@ -81,6 +83,7 @@ export class ServiceContainer {
             this.projectScanner,
             workspaceRoot
         );
+        this.publishTreeProvider = new PublishTreeProvider(workspaceRoot);
         this.treeProvider = new UnifiedTreeProvider(workspaceRoot, this.historyManager, this.watchTreeProvider, this.debugTreeProvider);
 
         // Create command registry
@@ -98,12 +101,14 @@ export class ServiceContainer {
         vscode.window.registerTreeDataProvider('dotnetHistory', container.historyProvider);
         vscode.window.registerTreeDataProvider('dotnetWatch', container.watchTreeProvider);
         vscode.window.registerTreeDataProvider('dotnetDebug', container.debugTreeProvider);
+        vscode.window.registerTreeDataProvider('dotnetPublish', container.publishTreeProvider);
 
         // Create refresh callback
         const onRefresh = () => {
             container.treeProvider.refresh();
             container.historyProvider.refresh();
             container.watchTreeProvider.refresh();
+            container.publishTreeProvider.refresh();
             ProfileInfoPanel.updateAll();
         };
 
