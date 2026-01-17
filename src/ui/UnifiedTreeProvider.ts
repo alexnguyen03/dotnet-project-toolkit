@@ -3,6 +3,7 @@ import { PublishTreeProvider, PublishTreeItem } from './publish/PublishTreeProvi
 import { WatchTreeProvider, WatchTreeItem } from './watch/WatchTreeProvider';
 import { DebugTreeProvider, DebugTreeItem } from './debug/DebugTreeProvider';
 import { HistoryTreeProvider, HistoryTreeItem } from './history/HistoryTreeProvider';
+import { HistoryManager } from '../services/HistoryManager';
 
 export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -14,11 +15,11 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
     private debugProvider: DebugTreeProvider;
     private historyProvider: HistoryTreeProvider;
 
-    constructor(workspaceRoot: string | undefined) {
+    constructor(workspaceRoot: string | undefined, historyManager: HistoryManager) {
         this.publishProvider = new PublishTreeProvider(workspaceRoot);
         this.watchProvider = new WatchTreeProvider();
         this.debugProvider = new DebugTreeProvider();
-        this.historyProvider = new HistoryTreeProvider();
+        this.historyProvider = new HistoryTreeProvider(historyManager);
     }
 
     refresh(): void {
@@ -67,19 +68,19 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (element instanceof PublishTreeItem) {
             return this.publishProvider.getChildren(element);
         }
-        
+
         // Watch items
         if (element instanceof WatchTreeItem) {
             return this.watchProvider.getChildren(element);
         }
 
-         // Debug items
-         if (element instanceof DebugTreeItem) {
+        // Debug items
+        if (element instanceof DebugTreeItem) {
             return this.debugProvider.getChildren(element);
         }
 
-         // History items
-         if (element instanceof HistoryTreeItem) {
+        // History items
+        if (element instanceof HistoryTreeItem) {
             return this.historyProvider.getChildren(element);
         }
 

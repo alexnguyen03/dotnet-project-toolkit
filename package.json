@@ -63,6 +63,21 @@
         "icon": "$(key)"
       },
       {
+        "command": "dotnet-project-toolkit.refreshHistory",
+        "title": ".NET Toolkit: Refresh Deployment History",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "dotnet-project-toolkit.clearHistory",
+        "title": ".NET Toolkit: Clear All Deployment History",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "dotnet-project-toolkit.clearHistoryEntry",
+        "title": ".NET Toolkit: Clear History Entry",
+        "icon": "$(close)"
+      },
+      {
         "command": "dotnet-project-toolkit.refreshProfiles",
         "title": ".NET Toolkit: Refresh Publish Profiles",
         "icon": "$(refresh)"
@@ -88,7 +103,42 @@
         "icon": "$(rocket)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dotnet-toolkit",
+          "title": ".NET Toolkit",
+          "icon": "resources/icons/dotnet.svg"
+        }
+      ]
+    },
     "views": {
+      "dotnet-toolkit": [
+        {
+          "id": "dotnetPublish",
+          "name": "Publish",
+          "icon": "$(rocket)",
+          "contextualTitle": "Publish Profiles"
+        },
+        {
+          "id": "dotnetWatch",
+          "name": "Watch",
+          "icon": "$(eye)",
+          "contextualTitle": "Watch Instances"
+        },
+        {
+          "id": "dotnetDebug",
+          "name": "Debug",
+          "icon": "$(debug-alt)",
+          "contextualTitle": "Debug Configurations"
+        },
+        {
+          "id": "dotnetHistory",
+          "name": "History",
+          "icon": "$(history)",
+          "contextualTitle": "Deployment History"
+        }
+      ],
       "explorer": [
         {
           "id": "dotnetToolkitExplorer",
@@ -99,7 +149,33 @@
       ]
     },
     "menus": {
+      "view/title": [
+        {
+          "command": "dotnet-project-toolkit.refreshProfiles",
+          "when": "view == dotnetPublish",
+          "group": "navigation"
+        },
+        {
+          "command": "dotnet-project-toolkit.refreshHistory",
+          "when": "view == dotnetHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "dotnet-project-toolkit.clearHistory",
+          "when": "view == dotnetHistory"
+        },
+        {
+          "command": "dotnet-project-toolkit.refreshProfiles",
+          "when": "view == dotnetToolkitExplorer",
+          "group": "navigation"
+        }
+      ],
       "view/item/context": [
+        {
+          "command": "dotnet-project-toolkit.clearHistoryEntry",
+          "when": "view == dotnetHistory && viewItem == deployment",
+          "group": "inline"
+        },
         {
           "command": "dotnet-project-toolkit.createPublishProfile",
           "when": "view == dotnetToolkitExplorer && viewItem == project",
@@ -139,6 +215,16 @@
           "type": "boolean",
           "default": true,
           "description": "Confirm before deploying to production"
+        },
+        "dotnetToolkit.historyMaxEntries": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of deployment history entries to keep"
+        },
+        "dotnetToolkit.historyGroupByDate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Group deployment history by date (Today, Yesterday, This Week, Older)"
         }
       }
     }

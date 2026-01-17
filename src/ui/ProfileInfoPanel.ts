@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import { PublishProfileInfo, ProjectInfo } from '../models/ProjectModels';
 import { IProfileService, ProfileWizardData } from '../services/ProfileService';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
+import { HistoryManager } from '../services/HistoryManager';
+import { DeploymentRecordHelper } from '../models/DeploymentRecord';
 
 /**
  * Profile Info Webview Panel
@@ -13,7 +15,7 @@ export class ProfileInfoPanel {
     public static currentPanel: ProfileInfoPanel | undefined;
     private readonly panel: vscode.WebviewPanel;
     private disposables: vscode.Disposable[] = [];
-    
+
     // Store mutable state
     private currentProfileInfo: PublishProfileInfo;
     private currentProjectName: string;
@@ -24,6 +26,7 @@ export class ProfileInfoPanel {
         projectName: string,
         private readonly profileService: IProfileService,
         private readonly passwordStorage: IPasswordStorage,
+        private readonly historyManager: HistoryManager,
         private readonly outputChannel: vscode.OutputChannel,
         private readonly onRefresh: () => void
     ) {
@@ -50,12 +53,12 @@ export class ProfileInfoPanel {
                         await vscode.window.showTextDocument(uri, { preview: false });
                         break;
                     case 'deploy':
-                        await vscode.commands.executeCommand('dotnet-project-toolkit.deployProfile', { 
-                            profileInfo: this.currentProfileInfo 
+                        await vscode.commands.executeCommand('dotnet-project-toolkit.deployProfile', {
+                            profileInfo: this.currentProfileInfo
                         });
                         break;
                     case 'delete':
-                        await vscode.commands.executeCommand('dotnet-project-toolkit.deletePublishProfile', { 
+                        await vscode.commands.executeCommand('dotnet-project-toolkit.deletePublishProfile', {
                             profileInfo: this.currentProfileInfo,
                             projectName: this.currentProjectName
                         });
@@ -94,6 +97,7 @@ export class ProfileInfoPanel {
         projectName: string,
         profileService: IProfileService,
         passwordStorage: IPasswordStorage,
+        historyManager: HistoryManager,
         outputChannel: vscode.OutputChannel,
         onRefresh: () => void
     ) {
@@ -125,6 +129,7 @@ export class ProfileInfoPanel {
             projectName,
             profileService,
             passwordStorage,
+            historyManager,
             outputChannel,
             onRefresh
         );
@@ -154,7 +159,7 @@ export class ProfileInfoPanel {
                 }
 
                 vscode.window.showInformationMessage(`✅ Profile "${data.profileName}" saved!`);
-                
+
                 // Reload profile info from disk to get updated properties
                 const updatedProfile = this.profileService.parse(this.currentProfileInfo.path);
                 if (updatedProfile) {
@@ -172,9 +177,9 @@ export class ProfileInfoPanel {
         }
     }
 
-    private update() {
+    public update() {
         const passwordKey = this.passwordStorage.generateKey(this.currentProjectName, this.currentProfileInfo.fileName);
-        
+
         this.panel.webview.html = this.getHtmlContent(passwordKey);
     }
 
@@ -486,6 +491,50 @@ export class ProfileInfoPanel {
         .error-box li {
             margin: 4px 0;
         }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            background: var(--vscode-textBlockQuote-background);
+            border-left: 3px solid #ccc;
+            padding: 10px 12px;
+            border-radius: 0 4px 4px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item.success { border-left-color: var(--success); }
+        .history-item.failed { border-left-color: var(--danger); }
+        .history-item.in-progress { border-left-color: var(--warning); }
+
+        .history-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .history-status {
+            font-weight: 600;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .history-time {
+            font-size: 0.8em;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .history-duration {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -563,10 +612,7 @@ export class ProfileInfoPanel {
     
     <div class="history-section">
         <h2>📜 Publish History</h2>
-        <div class="history-placeholder">
-            <p>No publish history available yet.</p>
-            <small>History will be recorded when you deploy using this profile.</small>
-        </div>
+        ${this.renderHistory()}
     </div>
     
     <script>
@@ -653,6 +699,38 @@ export class ProfileInfoPanel {
     </script>
 </body>
 </html>`;
+    }
+
+    private renderHistory(): string {
+        const allHistory = this.historyManager.getAllHistory();
+        const profileHistory = allHistory
+            .filter(h => h.profileName === this.currentProfileInfo.fileName)
+            .slice(0, 5); // Show last 5 entries
+
+        if (profileHistory.length === 0) {
+            return `
+                <div class="history-placeholder">
+                    <p>No publish history available yet.</p>
+                    <small>History will be recorded when you deploy using this profile.</small>
+                </div>`;
+        }
+
+        const items = profileHistory.map(h => {
+            const statusIcon = h.status === 'success' ? '✅' : h.status === 'failed' ? '❌' : '⏳';
+            const duration = h.duration ? DeploymentRecordHelper.formatDuration(h.duration) : '';
+            const startTime = new Date(h.startTime).toLocaleString();
+
+            return `
+                <div class="history-item ${h.status}">
+                    <div class="history-info">
+                        <div class="history-status">${statusIcon} ${h.status.toUpperCase()}</div>
+                        <div class="history-time">${startTime}</div>
+                    </div>
+                    <div class="history-duration">${duration}</div>
+                </div>`;
+        }).join('');
+
+        return `<div class="history-list">${items}</div>`;
     }
 
     private getEnvBadge(env: string): string {

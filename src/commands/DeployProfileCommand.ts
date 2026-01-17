@@ -1,75 +1,106 @@
 import * as vscode from 'vscode';
-import { BaseCommand } from './ICommand';
+import { ICommand } from './ICommand';
+import { PublishTreeItem } from '../ui/publish/PublishTreeProvider';
+import { HistoryManager } from '../services/HistoryManager';
 import { PublishProfileInfo } from '../models/ProjectModels';
 
 /**
  * Deploy Profile Command
  * Handles deploying to a publish profile
  */
-export class DeployProfileCommand extends BaseCommand {
+export class DeployProfileCommand implements ICommand {
     readonly id = 'dotnet-project-toolkit.deployProfile';
 
     constructor(
-        outputChannel: vscode.OutputChannel,
-        private readonly onRefresh: () => void
-    ) {
-        super(outputChannel);
-    }
+        private readonly outputChannel: vscode.OutputChannel,
+        private readonly onRefresh: () => void,
+        private readonly historyManager: HistoryManager
+    ) { }
 
-    async execute(item?: unknown): Promise<void> {
-        const treeItem = item as { profileInfo?: PublishProfileInfo };
-        const profileInfo = treeItem?.profileInfo;
-
-        if (!profileInfo) {
-            vscode.window.showErrorMessage('No profile information available');
+    async execute(item: PublishTreeItem): Promise<void> {
+        if (!item || !item.profileInfo) {
+            vscode.window.showErrorMessage('No publish profile selected');
             return;
         }
 
-        const profileName = profileInfo.name;   
+        const profile = item.profileInfo;
+        const projectName = item.projectName || 'Unknown Project';
+        const environment = profile.environment.toUpperCase();
 
-        // Confirm deployment
-        const answer = await vscode.window.showWarningMessage(
-            `⚠️ Deploy to ${profileInfo.environment} environment: ${profileName}?`,
-            { modal: true },
-            'Deploy',
-            'Cancel'
-        );
+        // 1. Confirm production deployment
+        if (profile.environment === 'prod') {
+            const confirm = await vscode.window.showWarningMessage(
+                `⚠️ Deploy to PRODUCTION: ${profile.name}?`,
+                { modal: true },
+                'Deploy',
+                'Cancel'
+            );
 
-        if (answer !== 'Deploy') {
-            this.log(`Cancelled: ${profileName}`);
-            return;
-        }
-
-        // Show progress
-        await vscode.window.withProgress(
-            {
-                location: vscode.ProgressLocation.Notification,
-                title: `Deploying ${profileName}...`,
-                cancellable: false
-            },
-            async (progress) => {
-                this.log(`Starting: ${profileName}`);
-                this.log(`Path: ${profileInfo.path}`);
-                this.log(`Environment: ${profileInfo.environment}`);
-
-                progress.report({ increment: 0, message: 'Validating...' });
-                await this.delay(500);
-
-                progress.report({ increment: 30, message: 'Building...' });
-                await this.delay(1000);
-
-                progress.report({ increment: 60, message: 'Publishing...' });
-                await this.delay(1500);
-
-                progress.report({ increment: 100, message: 'Complete!' });
-                this.log(`✓ Success: ${profileName}`);
+            if (confirm !== 'Deploy') {
+                return;
             }
-        );
+        }
 
-        vscode.window.showInformationMessage(`✅ ${profileName} deployed successfully!`);
-    }
+        // 2. Add history record (in-progress)
+        const startTime = new Date();
+        const historyId = await this.historyManager.addDeployment({
+            profileName: profile.name,
+            projectName: projectName,
+            environment: environment,
+            status: 'in-progress',
+            startTime: startTime.toISOString()
+        });
 
-    private delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        // Refresh views to show in-progress
+        this.onRefresh();
+
+        // 3. Start mock deployment process
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Deploying ${profile.name}...`,
+                cancellable: false
+            }, async (progress) => {
+                this.outputChannel.appendLine(`[Deploy] Starting deployment for ${profile.name} (${environment})`);
+                this.outputChannel.show();
+
+                progress.report({ message: 'Validating environment...', increment: 0 });
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                progress.report({ message: 'Building project...', increment: 30 });
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                progress.report({ message: 'Publishing to IIS...', increment: 60 });
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                progress.report({ message: 'Deployment complete!', increment: 100 });
+            });
+
+            // 4. Update history with success
+            const endTime = new Date();
+            await this.historyManager.updateDeployment(historyId, {
+                status: 'success',
+                endTime: endTime.toISOString(),
+                duration: endTime.getTime() - startTime.getTime()
+            });
+
+            vscode.window.showInformationMessage(`✅ ${profile.name} deployed successfully!`);
+            this.outputChannel.appendLine(`[Success] Deployment for ${profile.name} finished.`);
+
+        } catch (error: any) {
+            // 5. Update history with failure
+            const endTime = new Date();
+            await this.historyManager.updateDeployment(historyId, {
+                status: 'failed',
+                endTime: endTime.toISOString(),
+                duration: endTime.getTime() - startTime.getTime(),
+                errorMessage: error.message || 'Unknown error occurred during deployment'
+            });
+
+            vscode.window.showErrorMessage(`❌ Deployment failed: ${error.message}`);
+            this.outputChannel.appendLine(`[Error] Deployment failed: ${error.message}`);
+        } finally {
+            this.onRefresh();
+        }
     }
 }

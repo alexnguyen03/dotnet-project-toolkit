@@ -3,6 +3,7 @@ import { BaseCommand } from './ICommand';
 import { PublishProfileInfo } from '../models/ProjectModels';
 import { IProfileService } from '../services/ProfileService';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
+import { HistoryManager } from '../services/HistoryManager';
 import { ProfileInfoPanel } from '../ui/ProfileInfoPanel';
 
 /**
@@ -17,6 +18,7 @@ export class ProfileInfoCommand extends BaseCommand {
         private readonly extensionUri: vscode.Uri,
         private readonly profileService: IProfileService,
         private readonly passwordStorage: IPasswordStorage,
+        private readonly historyManager: HistoryManager,
         private readonly onRefresh: () => void
     ) {
         super(outputChannel);
@@ -40,6 +42,7 @@ export class ProfileInfoCommand extends BaseCommand {
             projectName,
             this.profileService,
             this.passwordStorage,
+            this.historyManager,
             this.outputChannel,
             this.onRefresh
         );
