@@ -235,16 +235,6 @@
           "group": "navigation"
         },
         {
-          "command": "dotnet-project-toolkit.watch.createGroup",
-          "when": "view == dotnetWatch",
-          "group": "navigation"
-        },
-        {
-          "command": "dotnet-project-toolkit.watch.stopAll",
-          "when": "view == dotnetWatch",
-          "group": "navigation"
-        },
-        {
           "command": "dotnet-project-toolkit.debug.createGroup",
           "when": "view == dotnetDebug",
           "group": "navigation"
@@ -304,6 +294,11 @@
         {
           "command": "dotnet-project-toolkit.watch.stop",
           "when": "view == dotnetWatch && viewItem == watchProjectRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.createGroup",
+          "when": "view == dotnetWatch && viewItem == watchGroupsContainer",
           "group": "inline"
         },
         {
