@@ -29,26 +29,6 @@ export class CreateProfileCommand extends BaseCommand {
 
         this.log(`Starting wizard for: ${projectInfo.name}`);
 
-        // Collect profile data
-        const data = await this.collectProfileData();
-        if (!data) {
-            this.log('Wizard cancelled');
-            return;
-        }
-
-        // Create profile
-        const profilePath = await this.profileService.create(projectInfo, data);
-
-        if (profilePath) {
-            vscode.window.showInformationMessage(`✅ Profile "${data.profileName}" created!`);
-            this.onRefresh();
-            this.log(`✓ Created: ${profilePath}`);
-        } else {
-            this.log('Failed to create profile');
-        }
-    }
-
-    private async collectProfileData(): Promise<ProfileWizardData | undefined> {
         // Step 1: Profile name
         const profileName = await vscode.window.showInputBox({
             prompt: 'Enter profile name (e.g., uat-api, prod-web)',
@@ -59,62 +39,52 @@ export class CreateProfileCommand extends BaseCommand {
                 return null;
             }
         });
-        if (!profileName) return undefined;
 
-        // Step 2: Environment
-        const env = await vscode.window.showQuickPick([
-            { label: 'UAT', value: 'uat' as const, description: 'User Acceptance Testing' },
-            { label: 'PROD', value: 'prod' as const, description: 'Production ⚠️' },
-            { label: 'DEV', value: 'dev' as const, description: 'Development' },
-        ], { placeHolder: 'Select environment' });
-        if (!env) return undefined;
+        if (!profileName) {
+            this.log('Wizard cancelled');
+            return;
+        }
 
-        // Step 3: Publish URL
-        const publishUrl = await vscode.window.showInputBox({
-            prompt: 'Enter publish URL (IP or domain)',
-            placeHolder: '192.168.10.3',
-            validateInput: v => !v?.trim() ? 'Required' : null
-        });
-        if (!publishUrl) return undefined;
+        // Auto-detect environment or default to dev
+        const lowerName = profileName.toLowerCase();
+        let env: 'uat' | 'prod' | 'dev' = 'dev';
+        if (lowerName.includes('uat')) env = 'uat';
+        if (lowerName.includes('prod')) env = 'prod';
 
-        // Step 4: Site name
-        const siteName = await vscode.window.showInputBox({
-            prompt: 'Enter IIS site name',
-            placeHolder: 'TS_BUDGETCTRL_API_UAT',
-            validateInput: v => !v?.trim() ? 'Required' : null
-        });
-        if (!siteName) return undefined;
-
-        // Step 5: Site URL (optional)
-        const siteUrl = await vscode.window.showInputBox({
-            prompt: 'Site URL for browser launch (optional)',
-            placeHolder: 'https://example.com'
-        });
-
-        // Step 6: Username
-        const username = await vscode.window.showInputBox({
-            prompt: 'Deployment username',
-            placeHolder: 'namnh',
-            validateInput: v => !v?.trim() ? 'Required' : null
-        });
-        if (!username) return undefined;
-
-        // Step 7: Password
-        const password = await vscode.window.showInputBox({
-            prompt: 'Deployment password',
-            password: true,
-            validateInput: v => !v?.trim() ? 'Required' : null
-        });
-        if (!password) return undefined;
-
-        return {
+        // Prepare initial data
+        const data: ProfileWizardData = {
             profileName,
-            environment: env.value,
-            publishUrl,
-            siteName,
-            username,
-            password,
-            siteUrl: siteUrl || undefined
+            environment: env,
+            publishUrl: '',
+            siteName: '',
+            username: '',
+            password: '',
+            siteUrl: ''
         };
+
+        // Create profile
+        const profilePath = await this.profileService.create(projectInfo, data);
+
+        if (profilePath) {
+            this.log(`✓ Created: ${profilePath}`);
+            vscode.window.showInformationMessage(`✅ Profile "${profileName}" created!`);
+            this.onRefresh();
+
+            // Open the info panel for the new profile
+            const profileInfo = this.profileService.parse(profilePath);
+            if (profileInfo) {
+                await vscode.commands.executeCommand('dotnet-project-toolkit.profileInfo', {
+                    profileInfo: profileInfo,
+                    projectName: projectInfo.name
+                });
+            }
+        } else {
+            this.log('Failed to create profile');
+        }
+    }
+
+    private async collectProfileData(): Promise<ProfileWizardData | undefined> {
+        // Method no longer used in this streamlined version
+        return undefined;
     }
 }

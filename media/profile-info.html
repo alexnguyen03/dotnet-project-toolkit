@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITLE}}</title>
+    {{CSP_META}}
+    <link rel="stylesheet" href="{{CSS_URI}}">
+</head>
+
+<body>
+    <div class="header">
+        <div class="title-row">
+            <div class="titles">
+                <h1 class="project-header">
+                    📦 <span id="displayProjectName"></span>
+                </h1>
+                <h2 class="profile-subheader" onclick="openFile()" title="Click to open .pubxml file">
+                    <span id="displayProfileName"></span>
+                </h2>
+            </div>
+            <div class="toolbar">
+                <span id="envBadge" class="badge"></span>
+                <div id="deployBtnContainer">
+                    <button type="button" class="btn-success" onclick="deploy()" id="btnDeploy"
+                        title="Deploy to this environment">
+                        🚀 Deploy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-box">
+        <strong>Password Variable:</strong> <code id="displayPasswordKey"></code><br>
+        <small>Used when deploying: <code id="displayPasswordKeyUsage"></code></small>
+    </div>
+
+    <form id="profileForm">
+
+        <div class="form-group">
+            <label>Environment</label>
+            <select id="environment">
+                <option value="uat">UAT - Testing</option>
+                <option value="prod">PROD - Production ⚠️</option>
+                <option value="dev">DEV - Development</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Publish URL (IP or Domain)</label>
+            <input type="text" id="publishUrl" placeholder="192.168.10.3">
+        </div>
+
+        <div class="form-group">
+            <label>IIS Site Name</label>
+            <input type="text" id="siteName" placeholder="TS_BUDGETCTRL_API_UAT">
+        </div>
+
+        <div class="form-group">
+            <label>Site URL (for browser launch)</label>
+            <input type="text" id="siteUrl" placeholder="https://example.com">
+        </div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="namnh">
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Leave empty to keep existing">
+            <div class="hint">Only enter if you want to change the password</div>
+        </div>
+
+        <div class="actions">
+            <div class="actions-left">
+                <button type="submit" class="btn-primary">💾 Save Changes</button>
+                <button type="button" class="btn-secondary" onclick="resetForm()">Cancel</button>
+            </div>
+            <button type="button" class="btn-danger" onclick="deleteProfile()" title="Delete this profile">
+                🗑️ Delete
+            </button>
+        </div>
+    </form>
+
+    <div class="history-section">
+        <h2>📜 Publish History</h2>
+        <!-- History content injected here -->
+        <div id="historyContainer">
+            {{HISTORY_CONTENT}}
+        </div>
+    </div>
+
+    <script nonce="{{NONCE}}" src="{{JS_URI}}"></script>
+</body>
+
+</html>

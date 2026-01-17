@@ -22,6 +22,7 @@ export class ProfileInfoPanel {
 
     private constructor(
         panel: vscode.WebviewPanel,
+        public readonly extensionUri: vscode.Uri,
         profileInfo: PublishProfileInfo,
         projectName: string,
         private readonly profileService: IProfileService,
@@ -67,6 +68,9 @@ export class ProfileInfoPanel {
                         if (!fs.existsSync(this.currentProfileInfo.path)) {
                             this.panel.dispose();
                         }
+                        break;
+                    case 'ready':
+                        await this.sendInitialData();
                         break;
                 }
             },
@@ -120,12 +124,14 @@ export class ProfileInfoPanel {
             column || vscode.ViewColumn.One,
             {
                 enableScripts: true,
-                retainContextWhenHidden: true
+                retainContextWhenHidden: true,
+                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
             }
         );
 
         ProfileInfoPanel.currentPanel = new ProfileInfoPanel(
             panel,
+            extensionUri,
             profileInfo,
             projectName,
             profileService,
@@ -182,550 +188,77 @@ export class ProfileInfoPanel {
         const passwordKey = this.passwordStorage.generateKey(this.currentProjectName, this.currentProfileInfo.fileName);
 
         this.panel.webview.html = this.getHtmlContent(passwordKey);
+        // Also send data update in case webview is already loaded
+        this.sendInitialData();
+    }
+
+    private async sendInitialData() {
+        const passwordKey = this.passwordStorage.generateKey(this.currentProjectName, this.currentProfileInfo.fileName);
+        const profile = this.currentProfileInfo;
+
+        const data = {
+            projectName: this.currentProjectName,
+            profileFileName: profile.fileName,
+            environment: profile.environment,
+            publishUrl: profile.publishUrl,
+            siteName: profile.siteName,
+            siteUrl: profile.siteUrl,
+            username: profile.userName,
+            passwordKey: passwordKey,
+            isDeploying: this.isDeploying(profile.fileName)
+        };
+
+        if (this.panel && this.panel.webview) {
+            await this.panel.webview.postMessage({ command: 'updateData', data });
+        }
     }
 
     private getHtmlContent(passwordKey: string): string {
-        const profile = this.currentProfileInfo;
-        const envBadge = this.getEnvBadge(profile.environment);
+        try {
+            const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'profile-info.html');
+            const cssPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'profile-info.css');
+            const jsPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'profile-info.js');
 
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile: ${profile.fileName}</title>
-    <style>
-        :root {
-            --bg: var(--vscode-editor-background);
-            --fg: var(--vscode-editor-foreground);
-            --input-bg: var(--vscode-input-background);
-            --input-border: var(--vscode-input-border);
-            --btn-bg: var(--vscode-button-background);
-            --btn-fg: var(--vscode-button-foreground);
-            --btn-hover: var(--vscode-button-hoverBackground);
-            --error: var(--vscode-errorForeground);
-            --success: #4caf50;
-            --warning: #ff9800;
-            --danger: #d32f2f;
-            --danger-hover: #b71c1c;
-        }
-        
-        body {
-            font-family: var(--vscode-font-family);
-            background: var(--bg);
-            color: var(--fg);
-            padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-        
-        .badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.7em;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        
-        .badge.uat { background: #2196f3; color: white; }
-        .badge.prod { background: #f44336; color: white; }
-        .badge.dev { background: #4caf50; color: white; }
-        .badge.unknown { background: #9e9e9e; color: white; }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 500;
-            font-size: 0.9em;
-        }
-        
-        input, select {
-            width: 100%;
-            padding: 8px 12px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            color: var(--fg);
-            border-radius: 4px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        
-        input:focus, select:focus {
-            outline: 1px solid var(--btn-bg);
-        }
-        
-        input[readonly] {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-        
-        .hint {
-            font-size: 0.8em;
-            color: var(--vscode-descriptionForeground);
-            margin-top: 4px;
-        }
-        
-        .actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 24px;
-            padding-top: 16px;
-            border-top: 1px solid var(--input-border);
-        }
+            // Convert local paths to Webview URIs
+            const cssUri = this.panel.webview.asWebviewUri(cssPath);
+            const jsUri = this.panel.webview.asWebviewUri(jsPath);
+            const nonce = this.getNonce();
+            const cspSource = this.panel.webview.cspSource;
 
-        .actions-left {
-            display: flex;
-            gap: 10px;
-        }
-        
-        button {
-            height: 32px;
-            padding: 0 16px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            transition: all 0.2s;
-            outline: none;
-        }
-        
-        button:active {
-            transform: translateY(1px);
-        }
+            // Content Security Policy
+            const cspMeta = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`;
 
-        .btn-primary {
-            background: var(--btn-bg);
-            color: var(--btn-fg);
-        }
-        
-        .btn-primary:hover {
-            background: var(--btn-hover);
-        }
-        
-        .btn-secondary {
-            background: transparent;
-            border-color: var(--input-border);
-            color: var(--fg);
-        }
-        
-        .btn-secondary:hover {
-            background: var(--vscode-toolbar-hoverBackground);
-        }
-        
-        .info-box {
-            background: var(--vscode-textBlockQuote-background);
-            border-left: 3px solid var(--btn-bg);
-            padding: 12px;
-            margin-bottom: 20px;
-            font-size: 0.9em;
-        }
-        
-        .info-box code {
-            background: var(--input-bg);
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: var(--vscode-editor-font-family);
-        }
-        
-        .header {
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--input-border);
-        }
+            let htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8');
 
-        .title-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-        
-        .titles {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .project-header {
-            font-size: 1.5em;
-            font-weight: 600;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--fg);
-        }
-        
-        .profile-subheader {
-            color: var(--vscode-textLink-foreground);
-            margin: 0;
-            font-weight: 500;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: opacity 0.2s;
-        }
+            const profile = this.currentProfileInfo;
 
-        .profile-subheader:hover {
-            opacity: 0.8;
-            text-decoration: underline;
-        }
-        
-        .link-icon {
-            font-size: 0.8em;
-            opacity: 0.7;
-        }
-        
-        .icon-btn {
-            padding: 6px 12px;
-            background: transparent;
-            border: 1px solid var(--input-border);
-            color: var(--fg);
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            white-space: nowrap;
-        }
-        
-        .icon-btn:hover {
-            background: var(--vscode-toolbar-hoverBackground);
-        }
+            // Render history (server-side rendering due to complexity)
+            const historyHtml = this.renderHistory();
 
-        .toolbar {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
+            // Inject resource URIs and History HTML
+            htmlContent = htmlContent
+                .replace('{{CSP_META}}', cspMeta)
+                .replace('{{NONCE}}', nonce) // For inline script
+                .replace('{{NONCE}}', nonce) // For external script source
+                .replace('{{TITLE}}', `Profile: ${profile.fileName}`)
+                .replace('{{CSS_URI}}', cssUri.toString())
+                .replace('{{JS_URI}}', jsUri.toString())
+                .replace('{{HISTORY_CONTENT}}', historyHtml);
 
-        .btn-success {
-            background: var(--success);
-            color: white;
+            return htmlContent;
+        } catch (error) {
+            this.outputChannel.appendLine(`[ProfileInfo] Error loading HTML: ${error}`);
+            return `<html><body><h1>Error loading profile-info.html</h1><p>${error}</p></body></html>`;
         }
-        
-        .btn-success:hover {
-            filter: brightness(1.1);
-        }
+    }
 
-        .btn-danger {
-            background: var(--danger);
-            color: white;
+    private getNonce() {
+        let text = '';
+        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (let i = 0; i < 32; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
         }
-
-        .btn-danger:hover {
-            background: var(--danger-hover);
-        }
-        
-        .icon-link {
-            cursor: pointer;
-            font-size: 0.9em;
-            margin: 0 8px;
-            opacity: 0.6;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-        }
-        
-        .icon-link:hover {
-            opacity: 1;
-            background: var(--vscode-toolbar-hoverBackground);
-        }
-        
-        .history-section {
-            margin-top: 32px;
-            padding-top: 16px;
-            border-top: 1px solid var(--input-border);
-        }
-        
-        .history-section h2 {
-            font-size: 1.1em;
-            margin-bottom: 12px;
-        }
-        
-        .history-placeholder {
-            background: var(--vscode-textBlockQuote-background);
-            padding: 16px;
-            border-radius: 4px;
-            text-align: center;
-            color: var(--vscode-descriptionForeground);
-        }
-        
-        .history-placeholder p {
-            margin: 0 0 8px 0;
-        }
-        
-        .error-box {
-            background: var(--vscode-inputValidation-errorBackground);
-            border: 1px solid var(--vscode-inputValidation-errorBorder);
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 16px;
-        }
-        
-        .error-box ul {
-            margin: 8px 0 0 0;
-            padding-left: 20px;
-        }
-        
-        .error-box li {
-            margin: 4px 0;
-        }
-
-        .history-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .history-item {
-            background: var(--vscode-textBlockQuote-background);
-            border-left: 3px solid #ccc;
-            padding: 10px 12px;
-            border-radius: 0 4px 4px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .history-item.success { border-left-color: var(--success); }
-        .history-item.failed { border-left-color: var(--danger); }
-        .history-item.in-progress { border-left-color: var(--warning); }
-
-        .history-info {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .history-status {
-            font-weight: 600;
-            font-size: 0.9em;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .history-time {
-            font-size: 0.8em;
-            color: var(--vscode-descriptionForeground);
-        }
-
-        .history-duration {
-            font-size: 0.8em;
-            opacity: 0.8;
-        }
-        .history-duration {
-            font-size: 0.8em;
-            opacity: 0.8;
-        }
-
-        .spinner {
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 2px solid white;
-            width: 14px;
-            height: 14px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="title-row">
-            <div class="titles">
-                <h1 class="project-header">
-                    📦 ${this.currentProjectName}
-                </h1>
-                <h2 class="profile-subheader" onclick="openFile()" title="Click to open .pubxml file">
-                    ${profile.fileName}
-                </h2>
-            </div>
-            <div class="toolbar">
-                <span class="badge ${profile.environment}">${profile.environment.toUpperCase()}</span>
-                ${this.renderDeployButton(profile.fileName)}
-            </div>
-        </div>
-    </div>
-    
-    <div class="info-box">
-        <strong>Password Variable:</strong> <code>${passwordKey}</code><br>
-        <small>Used when deploying: <code>/p:Password=$env:${passwordKey}</code></small>
-    </div>
-    
-    <form id="profileForm">
-        
-        <div class="form-group">
-            <label>Environment</label>
-            <select id="environment">
-                <option value="uat" ${profile.environment === 'uat' ? 'selected' : ''}>UAT - Testing</option>
-                <option value="prod" ${profile.environment === 'prod' ? 'selected' : ''}>PROD - Production ⚠️</option>
-                <option value="dev" ${profile.environment === 'dev' ? 'selected' : ''}>DEV - Development</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label>Publish URL (IP or Domain)</label>
-            <input type="text" id="publishUrl" value="${profile.publishUrl || ''}" placeholder="192.168.10.3">
-        </div>
-        
-        <div class="form-group">
-            <label>IIS Site Name</label>
-            <input type="text" id="siteName" value="${profile.siteName || ''}" placeholder="TS_BUDGETCTRL_API_UAT">
-        </div>
-        
-        <div class="form-group">
-            <label>Site URL (for browser launch)</label>
-            <input type="text" id="siteUrl" value="${profile.siteUrl || ''}" placeholder="https://example.com">
-        </div>
-        
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="username" value="${profile.userName || ''}" placeholder="namnh">
-        </div>
-        
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="password" placeholder="Leave empty to keep existing">
-            <div class="hint">Only enter if you want to change the password</div>
-        </div>
-        
-        <div class="actions">
-            <div class="actions-left">
-                <button type="submit" class="btn-primary">💾 Save Changes</button>
-                <button type="button" class="btn-secondary" onclick="resetForm()">Cancel</button>
-            </div>
-            <button type="button" class="btn-danger" onclick="deleteProfile()" title="Delete this profile">
-                🗑️ Delete
-            </button>
-        </div>
-        </div>
-    </form>
-    
-    <script>
-        // Disable forms if deploying
-        if (${this.isDeploying(profile.fileName)}) {
-            const inputs = document.querySelectorAll('input, select, button');
-            inputs.forEach(el => el.disabled = true);
-        }
-    </script>
-    
-    <div class="history-section">
-        <h2>📜 Publish History</h2>
-        ${this.renderHistory()}
-    </div>
-    
-    <script>
-        const vscode = acquireVsCodeApi();
-        
-        // Store initial values for reset
-        const profileName = '${profile.fileName}';
-        const initialData = {
-            environment: '${profile.environment}',
-            publishUrl: '${profile.publishUrl || ''}',
-            siteName: '${profile.siteName || ''}',
-            siteUrl: '${profile.siteUrl || ''}',
-            username: '${profile.userName || ''}',
-            password: ''
-        };
-        
-        document.getElementById('profileForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // Validate required fields
-            const publishUrl = document.getElementById('publishUrl').value.trim();
-            const siteName = document.getElementById('siteName').value.trim();
-            const username = document.getElementById('username').value.trim();
-            
-            let errors = [];
-            if (!publishUrl) errors.push('Publish URL is required');
-            if (!siteName) errors.push('Site Name is required');
-            if (!username) errors.push('Username is required');
-            
-            // Show validation errors
-            clearErrors();
-            if (errors.length > 0) {
-                showErrors(errors);
-                return;
-            }
-            
-            const data = {
-                profileName: profileName,
-                environment: document.getElementById('environment').value,
-                publishUrl: publishUrl,
-                siteName: siteName,
-                siteUrl: document.getElementById('siteUrl').value || undefined,
-                username: username,
-                password: document.getElementById('password').value || 'KEEP_EXISTING'
-            };
-            
-            vscode.postMessage({ command: 'save', data });
-        });
-        
-        function resetForm() {
-            document.getElementById('environment').value = initialData.environment;
-            document.getElementById('publishUrl').value = initialData.publishUrl;
-            document.getElementById('siteName').value = initialData.siteName;
-            document.getElementById('siteUrl').value = initialData.siteUrl;
-            document.getElementById('username').value = initialData.username;
-            document.getElementById('password').value = '';
-            clearErrors();
-        }
-        
-        function clearErrors() {
-            const existing = document.querySelector('.error-box');
-            if (existing) existing.remove();
-        }
-        
-        function showErrors(errors) {
-            const errorBox = document.createElement('div');
-            errorBox.className = 'error-box';
-            errorBox.innerHTML = '<strong>⚠️ Validation Errors:</strong><ul>' + 
-                errors.map(e => '<li>' + e + '</li>').join('') + '</ul>';
-            document.querySelector('.actions').before(errorBox);
-        }
-        
-        function openFile() {
-            vscode.postMessage({ command: 'openFile' });
-        }
-
-        function deploy() {
-            vscode.postMessage({ command: 'deploy' });
-        }
-
-        function deleteProfile() {
-            vscode.postMessage({ command: 'delete' });
-        }
-    </script>
-</body>
-</html>`;
+        return text;
     }
 
     private renderHistory(): string {
@@ -764,29 +297,6 @@ export class ProfileInfoPanel {
         const allHistory = this.historyManager.getAllHistory();
         const latest = allHistory.find(h => h.profileName === profileName);
         return latest?.status === 'in-progress';
-    }
-
-    private renderDeployButton(profileName: string): string {
-        if (this.isDeploying(profileName)) {
-            return `
-                <button type="button" class="btn-success" disabled title="Deployment in progress...">
-                    <div class="spinner"></div> Deploying...
-                </button>`;
-        }
-        return `
-            <button type="button" class="btn-success" onclick="deploy()" title="Deploy to this environment">
-                🚀 Deploy
-            </button>`;
-    }
-
-    private getEnvBadge(env: string): string {
-        const colors: Record<string, string> = {
-            uat: '#2196f3',
-            prod: '#f44336',
-            dev: '#4caf50',
-            unknown: '#9e9e9e'
-        };
-        return colors[env] || colors.unknown;
     }
 
     public dispose() {
