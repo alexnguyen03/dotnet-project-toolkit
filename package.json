@@ -178,7 +178,7 @@
         {
           "id": "dotnet-toolkit",
           "title": ".NET Toolkit",
-          "icon": "resources/icons/dotnet.svg"
+          "icon": "resources/icons/main-icon.svg"
         }
       ]
     },
@@ -213,7 +213,7 @@
         {
           "id": "dotnetToolkitExplorer",
           "name": ".NET Project Toolkit",
-          "icon": "resources/icons/dotnet.svg",
+          "icon": "resources/icons/main-icon.svg",
           "contextualTitle": ".NET Toolkit"
         }
       ]

@@ -180,7 +180,7 @@ export class WatchService {
                 if (action === 'Learn More') {
                     vscode.env.openExternal(vscode.Uri.parse('https://aka.ms/dotnet/sdk-not-found'));
                 } else if (action === 'Download SDK') {
-                    vscode.env.openExternal(vscode.Uri.parse('https://dotnet.microsoft.com/download'));
+                    vscode.env.openExternal(vscode.Uri.parse('https://main-icon.microsoft.com/download'));
                 }
                 return false;
             } else if (stderr.includes('not recognized') || stderr.includes('command not found')) {
