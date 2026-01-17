@@ -82,6 +82,26 @@
         "command": "dotnet-project-toolkit.clearHistoryEntry",
         "title": ".NET Toolkit: Clear History Entry",
         "icon": "$(close)"
+      },
+      {
+        "command": "dotnet-project-toolkit.createPublishProfile",
+        "title": ".NET Toolkit: Create Publish Profile",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dotnet-project-toolkit.deletePublishProfile",
+        "title": ".NET Toolkit: Delete Publish Profile",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "dotnet-project-toolkit.profileInfo",
+        "title": ".NET Toolkit: Profile Info",
+        "icon": "$(info)"
+      },
+      {
+        "command": "dotnet-project-toolkit.deployProfile",
+        "title": ".NET Toolkit: Deploy Profile",
+        "icon": "$(rocket)"
       }
     ],
     "viewsContainers": {
@@ -119,6 +139,14 @@
           "icon": "$(history)",
           "contextualTitle": "Deployment History"
         }
+      ],
+      "explorer": [
+        {
+          "id": "dotnetToolkitExplorer",
+          "name": ".NET Project Toolkit",
+          "icon": "resources/icons/dotnet.svg",
+          "contextualTitle": ".NET Toolkit"
+        }
       ]
     },
     "menus": {
@@ -136,12 +164,37 @@
         {
           "command": "dotnet-project-toolkit.clearHistory",
           "when": "view == dotnetHistory"
+        },
+        {
+          "command": "dotnet-project-toolkit.refreshProfiles",
+          "when": "view == dotnetToolkitExplorer",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
         {
           "command": "dotnet-project-toolkit.clearHistoryEntry",
           "when": "view == dotnetHistory && viewItem == deployment",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.deployProfile",
+          "when": "view == dotnetToolkitExplorer && viewItem == publishProfile",
+          "group": "inline@1"
+        },
+        {
+          "command": "dotnet-project-toolkit.deletePublishProfile",
+          "when": "view == dotnetToolkitExplorer && viewItem == publishProfile",
+          "group": "inline@2"
+        },
+        {
+          "command": "dotnet-project-toolkit.refreshProfiles",
+          "when": "view == dotnetToolkitExplorer && viewItem == project",
+          "group": "inline@1"
+        },
+        {
+          "command": "dotnet-project-toolkit.createPublishProfile",
+          "when": "view == dotnetToolkitExplorer && viewItem == project",
           "group": "inline"
         }
       ]
