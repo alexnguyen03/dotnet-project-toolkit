@@ -54,7 +54,8 @@ export class ProfileInfoPanel {
                         break;
                     case 'deploy':
                         await vscode.commands.executeCommand('dotnet-project-toolkit.deployProfile', {
-                            profileInfo: this.currentProfileInfo
+                            profileInfo: this.currentProfileInfo,
+                            projectName: this.currentProjectName
                         });
                         break;
                     case 'delete':

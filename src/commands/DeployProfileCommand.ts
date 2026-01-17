@@ -27,29 +27,32 @@ export class DeployProfileCommand implements ICommand {
         const projectName = item.projectName || 'Unknown Project';
         const environment = profile.environment.toUpperCase();
 
-        // 1. Confirm production deployment
-        if (profile.environment === 'prod') {
-            const confirm = await vscode.window.showWarningMessage(
-                `⚠️ Deploy to PRODUCTION: ${profile.name}?`,
-                { modal: true },
-                'Deploy',
-                'Cancel'
-            );
+        // 1. Confirm deployment (for ALL environments)
+        const isProd = profile.environment === 'prod';
+        const confirmMessage = isProd
+            ? `⚠️ Deploy to PRODUCTION: ${profile.name}?`
+            : `Deploy to ${environment}: ${profile.name}?`;
 
-            if (confirm !== 'Deploy') {
-                return;
-            }
+        const confirm = await vscode.window.showWarningMessage(
+            confirmMessage,
+            { modal: true },
+            'Deploy',
+            'Cancel'
+        );
+
+        if (confirm !== 'Deploy') {
+            return;
         }
 
         // 2. Add history record (in-progress)
         const startTime = new Date();
         const historyId = await this.historyManager.addDeployment({
-            profileName: profile.name,
+            profileName: profile.fileName, // Use fileName for consistent ID
             projectName: projectName,
             environment: environment,
             status: 'in-progress',
             startTime: startTime.toISOString()
-        });
+        }, profile.path);
 
         // Refresh views to show in-progress
         this.onRefresh();
@@ -82,7 +85,7 @@ export class DeployProfileCommand implements ICommand {
                 status: 'success',
                 endTime: endTime.toISOString(),
                 duration: endTime.getTime() - startTime.getTime()
-            });
+            }, profile.path);
 
             vscode.window.showInformationMessage(`✅ ${profile.name} deployed successfully!`);
             this.outputChannel.appendLine(`[Success] Deployment for ${profile.name} finished.`);
@@ -95,7 +98,7 @@ export class DeployProfileCommand implements ICommand {
                 endTime: endTime.toISOString(),
                 duration: endTime.getTime() - startTime.getTime(),
                 errorMessage: error.message || 'Unknown error occurred during deployment'
-            });
+            }, profile.path);
 
             vscode.window.showErrorMessage(`❌ Deployment failed: ${error.message}`);
             this.outputChannel.appendLine(`[Error] Deployment failed: ${error.message}`);
