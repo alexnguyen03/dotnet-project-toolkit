@@ -262,6 +262,21 @@
           "group": "inline@2"
         },
         {
+          "command": "dotnet-project-toolkit.createPublishProfile",
+          "when": "view == dotnetPublish && viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.deployProfile",
+          "when": "view == dotnetPublish && viewItem == publishProfile",
+          "group": "inline@1"
+        },
+        {
+          "command": "dotnet-project-toolkit.deletePublishProfile",
+          "when": "view == dotnetPublish && viewItem == publishProfile",
+          "group": "inline@2"
+        },
+        {
           "command": "dotnet-project-toolkit.watch.start",
           "when": "view == dotnetWatch && viewItem == watchProject",
           "group": "inline"
