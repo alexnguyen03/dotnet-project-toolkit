@@ -8,6 +8,12 @@ window.addEventListener('message', event => {
         case 'updateData':
             init(message.data);
             break;
+        case 'updateHistory':
+            const historyContainer = document.getElementById('historyContainer');
+            if (historyContainer && message.html) {
+                historyContainer.innerHTML = message.html;
+            }
+            break;
     }
 });
 

@@ -66,10 +66,24 @@ export class ProfileInfoPanel {
                         }
                         break;
                     case 'deploy':
+                        // 1. Notify UI: Deployment Starting (Loading State)
+                        // We manually force isDeploying: true here because the history record might not be written yet
+                        // or we want immediate feedback before the command starts.
+                        this._isDeploying = true;
+                        // Send update with override for faster feedback, though next update() calls get it from _isDeploying
+                        await this.sendUpdateData({ isDeploying: true });
+                        await this.sendHistoryUpdate();
+
+                        // 2. Execute Deployment
                         await vscode.commands.executeCommand('dotnet-project-toolkit.deployProfile', {
                             profileInfo: this.currentProfileInfo,
                             projectName: this.currentProjectName
                         });
+
+                        // 3. Notify UI: Deployment Finished & Refresh History
+                        this._isDeploying = false;
+                        await this.sendUpdateData({ isDeploying: false });
+                        await this.sendHistoryUpdate();
                         break;
                     case 'delete':
                         await vscode.commands.executeCommand('dotnet-project-toolkit.deletePublishProfile', {
@@ -82,7 +96,7 @@ export class ProfileInfoPanel {
                         }
                         break;
                     case 'ready':
-                        await this.sendInitialData();
+                        await this.sendUpdateData();
                         break;
                 }
             },
@@ -230,6 +244,8 @@ export class ProfileInfoPanel {
     }
 
 
+    private _isDeploying: boolean = false;
+
     private async saveProfile(data: ProfileWizardData) {
         try {
             this.outputChannel.appendLine(`[ProfileInfo] Saving: ${data.profileName}`);
@@ -264,13 +280,22 @@ export class ProfileInfoPanel {
                 vscode.window.showInformationMessage(message);
 
                 // Reload profile info from disk
-                const updatedProfile = this.profileService.parse(profilePath);
-                if (updatedProfile) {
-                    this.currentProfileInfo = updatedProfile;
-                    this.currentProfileInfo.path = profilePath;
-                    this.panel.title = `${this.currentProjectName} / ${updatedProfile.fileName}`;
-                    this.isCreateMode = false; // Switch to edit mode after first save
-                }
+                // Update current profile info with saved data immediately to ensure UI consistency
+                // (Parsing from disk might have delays or potential issues, so we trust the input data for now)
+                this.currentProfileInfo = {
+                    name: data.profileName,
+                    path: profilePath,
+                    fileName: data.profileName,
+                    environment: data.environment,
+                    isProduction: data.environment === 'prod',
+                    publishUrl: data.publishUrl,
+                    siteName: data.siteName,
+                    siteUrl: data.siteUrl || '',
+                    userName: data.username
+                };
+
+                this.panel.title = `${this.currentProjectName} / ${this.currentProfileInfo.fileName}`;
+                this.isCreateMode = false; // Switch to edit mode after first save
 
                 this.onRefresh();
                 this.update(); // Re-render webview with new data
@@ -287,14 +312,14 @@ export class ProfileInfoPanel {
 
         this.panel.webview.html = this.getHtmlContent(passwordKey);
         // Also send data update in case webview is already loaded
-        this.sendInitialData();
+        this.sendUpdateData();
     }
 
-    private async sendInitialData() {
+    private async sendUpdateData(overrides: Partial<any> = {}) {
         const passwordKey = this.passwordStorage.generateKey(this.currentProjectName, this.currentProfileInfo.fileName);
         const profile = this.currentProfileInfo;
 
-        const data = {
+        const baseData = {
             projectName: this.currentProjectName,
             profileFileName: profile.fileName,
             environment: profile.environment,
@@ -303,12 +328,21 @@ export class ProfileInfoPanel {
             siteUrl: profile.siteUrl,
             username: profile.userName,
             passwordKey: passwordKey,
-            isDeploying: this.isDeploying(profile.fileName),
+            isDeploying: this._isDeploying || this.isDeploying(profile.fileName),
             isCreateMode: this.isCreateMode
         };
 
+        const data = { ...baseData, ...overrides };
+
         if (this.panel && this.panel.webview) {
             await this.panel.webview.postMessage({ command: 'updateData', data });
+        }
+    }
+
+    private async sendHistoryUpdate() {
+        if (this.panel && this.panel.webview) {
+            const historyHtml = this.renderHistory();
+            await this.panel.webview.postMessage({ command: 'updateHistory', html: historyHtml });
         }
     }
 
@@ -364,9 +398,28 @@ export class ProfileInfoPanel {
         const allHistory = this.historyManager.getAllHistory();
         const profileHistory = allHistory
             .filter(h => h.profileName === this.currentProfileInfo.fileName)
-            .slice(0, 5); // Show last 5 entries
+            .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()); // Ensure desc order
 
-        if (profileHistory.length === 0) {
+        // Prepend fake 'in-progress' item if locally deploying and not yet in history
+        let displayItems = [...profileHistory];
+        if (this._isDeploying) {
+            const alreadyInProgress = displayItems.length > 0 && displayItems[0].status === 'in-progress';
+            if (!alreadyInProgress) {
+                displayItems.unshift({
+                    id: 'temp-pending',
+                    profileName: this.currentProfileInfo.fileName,
+                    status: 'in-progress',
+                    startTime: new Date().toISOString(),
+                    duration: 0,
+                    projectName: this.currentProjectName,
+                    environment: this.currentProfileInfo.environment
+                });
+            }
+        }
+
+        displayItems = displayItems.slice(0, 5); // Show last 5 entries
+
+        if (displayItems.length === 0) {
             return `
                 <div class="history-placeholder">
                     <p>No publish history available yet.</p>
@@ -374,15 +427,17 @@ export class ProfileInfoPanel {
                 </div>`;
         }
 
-        const items = profileHistory.map(h => {
-            const statusIcon = h.status === 'success' ? '✅' : h.status === 'failed' ? '❌' : '⏳';
+        const items = displayItems.map(h => {
+            const isInProgress = h.status === 'in-progress';
+            const statusIcon = h.status === 'success' ? '✅' : h.status === 'failed' ? '❌' : '<div class="spinner"></div>';
             const duration = h.duration ? DeploymentRecordHelper.formatDuration(h.duration) : '';
             const startTime = new Date(h.startTime).toLocaleString();
+            const statusText = isInProgress ? 'DEPLOYING...' : h.status.toUpperCase();
 
             return `
                 <div class="history-item ${h.status}">
                     <div class="history-info">
-                        <div class="history-status">${statusIcon} ${h.status.toUpperCase()}</div>
+                        <div class="history-status">${statusIcon} ${statusText}</div>
                         <div class="history-time">${startTime}</div>
                     </div>
                     <div class="history-duration">${duration}</div>
