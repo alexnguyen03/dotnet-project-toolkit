@@ -1,6 +1,14 @@
 import * as vscode from 'vscode';
 import { PublishTreeProvider, PublishTreeItem } from './publish/PublishTreeProvider';
-import { WatchTreeProvider, WatchTreeItem } from './watch/WatchTreeProvider';
+import { WatchTreeProvider, WatchTreeItem } from './WatchTreeProvider';
+import {
+    GroupContainerItem,
+    ProjectContainerItem,
+    RunningWatchItem,
+    WatchGroupItem,
+    ProjectItem,
+    InfoItem
+} from './WatchTreeProvider';
 import { DebugTreeProvider, DebugTreeItem } from './debug/DebugTreeProvider';
 import { HistoryTreeProvider, HistoryTreeItem } from './history/HistoryTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
@@ -15,11 +23,21 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
     private debugProvider: DebugTreeProvider;
     private historyProvider: HistoryTreeProvider;
 
-    constructor(workspaceRoot: string | undefined, historyManager: HistoryManager) {
+    constructor(
+        workspaceRoot: string | undefined,
+        historyManager: HistoryManager,
+        watchTreeProvider: WatchTreeProvider
+    ) {
         this.publishProvider = new PublishTreeProvider(workspaceRoot);
-        this.watchProvider = new WatchTreeProvider();
+        this.watchProvider = watchTreeProvider;
         this.debugProvider = new DebugTreeProvider();
         this.historyProvider = new HistoryTreeProvider(historyManager);
+
+        // Forward events from child providers
+        this.publishProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
+        this.watchProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
+        this.debugProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
+        this.historyProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
     }
 
     refresh(): void {
@@ -70,8 +88,8 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
 
         // Watch items
-        if (element instanceof WatchTreeItem) {
-            return this.watchProvider.getChildren(element);
+        if (this.isWatchItem(element)) {
+            return this.watchProvider.getChildren(element as WatchTreeItem);
         }
 
         // Debug items
@@ -85,6 +103,15 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
 
         return [];
+    }
+
+    private isWatchItem(element: vscode.TreeItem): boolean {
+        return element instanceof GroupContainerItem ||
+            element instanceof ProjectContainerItem ||
+            element instanceof RunningWatchItem ||
+            element instanceof WatchGroupItem ||
+            element instanceof ProjectItem ||
+            element instanceof InfoItem;
     }
 }
 

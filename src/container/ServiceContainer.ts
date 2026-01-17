@@ -14,6 +14,10 @@ import { UnifiedTreeProvider } from '../ui/UnifiedTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
 import { HistoryTreeProvider } from '../ui/history/HistoryTreeProvider';
 import { ProfileInfoPanel } from '../ui/ProfileInfoPanel';
+import { WatchService } from '../services/WatchService';
+import { WatchConfigService } from '../services/WatchConfigService';
+import { WatchTreeProvider } from '../ui/WatchTreeProvider';
+import { ProjectScanner } from '../utils/ProjectScanner';
 
 /**
  * Service Container - Dependency Injection
@@ -27,13 +31,17 @@ export class ServiceContainer {
     readonly historyProvider: HistoryTreeProvider;
     readonly historyManager: HistoryManager;
     readonly commandRegistry: CommandRegistry;
+    readonly watchService: WatchService;
+    readonly watchConfigService: WatchConfigService;
+    readonly watchTreeProvider: WatchTreeProvider;
+    readonly projectScanner: ProjectScanner;
 
     private constructor(context: vscode.ExtensionContext) {
         // Create output channel
         this.outputChannel = vscode.window.createOutputChannel('.NET Toolkit');
 
         // Get workspace root
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
 
         // Create password storage (use EnvVar by default, can be configured)
         const storageType = vscode.workspace.getConfiguration('dotnetToolkit').get<string>('passwordStorage', 'envvar');
@@ -47,10 +55,19 @@ export class ServiceContainer {
         // Create services
         this.profileService = new ProfileService(this.outputChannel, this.passwordStorage);
         this.historyManager = new HistoryManager(context);
+        this.projectScanner = new ProjectScanner();
+        this.watchConfigService = new WatchConfigService(context);
+        this.watchService = new WatchService(context);
 
         // Create tree providers
-        this.treeProvider = new UnifiedTreeProvider(workspaceRoot, this.historyManager);
         this.historyProvider = new HistoryTreeProvider(this.historyManager);
+        this.watchTreeProvider = new WatchTreeProvider(
+            this.watchService,
+            this.watchConfigService,
+            this.projectScanner,
+            workspaceRoot
+        );
+        this.treeProvider = new UnifiedTreeProvider(workspaceRoot, this.historyManager, this.watchTreeProvider);
 
         // Create command registry
         this.commandRegistry = new CommandRegistry(context, this.outputChannel);
@@ -65,12 +82,14 @@ export class ServiceContainer {
         // Register tree providers
         vscode.window.registerTreeDataProvider('dotnetToolkitExplorer', container.treeProvider);
         vscode.window.registerTreeDataProvider('dotnetHistory', container.historyProvider);
+        vscode.window.registerTreeDataProvider('dotnetWatch', container.watchTreeProvider);
 
         // Create refresh callback
         const onRefresh = () => {
             container.treeProvider.refresh();
             container.historyProvider.refresh();
-            ProfileInfoPanel.currentPanel?.update();
+            container.watchTreeProvider.refresh();
+            ProfileInfoPanel.updateAll();
         };
 
         // Register commands
@@ -116,6 +135,89 @@ export class ServiceContainer {
                 }
             })
         );
+
+        // Register Watch specific commands
+        context.subscriptions.push(
+            vscode.commands.registerCommand('dotnet-project-toolkit.watch.start', async (item: any) => {
+                if (item && item.project) {
+                    await container.watchService.runWatch(item.project);
+                    container.watchTreeProvider.refresh();
+                }
+            }),
+            vscode.commands.registerCommand('dotnet-project-toolkit.watch.stop', (item: any) => {
+                const csprojPath = item?.csprojPath || item?.project?.csprojPath;
+                if (csprojPath) {
+                    container.watchService.stopWatch(csprojPath);
+                    container.watchTreeProvider.refresh();
+                }
+            }),
+            vscode.commands.registerCommand('dotnet-project-toolkit.watch.runGroup', async (item: any) => {
+                if (item && item.group) {
+                    const structure = await container.projectScanner.scanWorkspace(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '');
+                    await container.watchService.runGroup(item.group, structure.projects);
+                    container.watchTreeProvider.refresh();
+                }
+            }),
+            vscode.commands.registerCommand('dotnet-project-toolkit.watch.stopAll', () => {
+                container.watchService.stopAll();
+                container.watchTreeProvider.refresh();
+            }),
+            vscode.commands.registerCommand('dotnet-project-toolkit.watch.stopGroup', async (item: any) => {
+                if (item && item.group) {
+                    const structure = await container.projectScanner.scanWorkspace(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '');
+                    container.watchService.stopGroup(item.group, structure.projects);
+                    container.watchTreeProvider.refresh();
+                }
+            }),
+            vscode.commands.registerCommand('dotnet-project-toolkit.watch.createGroup', async () => {
+                const name = await vscode.window.showInputBox({
+                    prompt: 'Enter Watch Group Name',
+                    placeHolder: 'Frontend & Backend'
+                });
+                if (!name) return;
+
+                const structure = await container.projectScanner.scanWorkspace(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '');
+                if (structure.projects.length === 0) {
+                    vscode.window.showWarningMessage('No projects found to group.');
+                    return;
+                }
+
+                const projectPicks = structure.projects.map(p => ({
+                    label: p.name,
+                    description: vscode.workspace.asRelativePath(p.projectDir),
+                    project: p
+                }));
+
+                const selected = await vscode.window.showQuickPick(projectPicks, {
+                    canPickMany: true,
+                    placeHolder: 'Select projects to include in this group'
+                });
+
+                if (selected && selected.length > 0) {
+                    await container.watchConfigService.saveGroup({
+                        id: container.watchConfigService.generateId(),
+                        name: name,
+                        projects: selected.map(s => s.project.name)
+                    });
+                    container.watchTreeProvider.refresh();
+                    vscode.window.showInformationMessage(`Watch group '${name}' created!`);
+                }
+            }),
+            vscode.commands.registerCommand('dotnet-project-toolkit.watch.deleteGroup', async (item: any) => {
+                if (item && item.group) {
+                    const confirm = await vscode.window.showWarningMessage(
+                        `Delete watch group '${item.group.name}'?`,
+                        { modal: true },
+                        'Delete'
+                    );
+                    if (confirm === 'Delete') {
+                        await container.watchConfigService.deleteGroup(item.group.id);
+                        container.watchTreeProvider.refresh();
+                    }
+                }
+            })
+        );
+
 
         // Register createProfileWithPanel command
         context.subscriptions.push(

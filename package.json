@@ -101,6 +101,41 @@
         "command": "dotnet-project-toolkit.deployProfile",
         "title": ".NET Toolkit: Deploy Profile",
         "icon": "$(rocket)"
+      },
+      {
+        "command": "dotnet-project-toolkit.watch.start",
+        "title": "Start Watch",
+        "icon": "$(play)"
+      },
+      {
+        "command": "dotnet-project-toolkit.watch.stop",
+        "title": "Stop Watch",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "dotnet-project-toolkit.watch.stopAll",
+        "title": "Stop All Watches",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "dotnet-project-toolkit.watch.createGroup",
+        "title": "Create Watch Group",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dotnet-project-toolkit.watch.deleteGroup",
+        "title": "Delete Watch Group",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "dotnet-project-toolkit.watch.runGroup",
+        "title": "Run Watch Group",
+        "icon": "$(play)"
+      },
+      {
+        "command": "dotnet-project-toolkit.watch.stopGroup",
+        "title": "Stop Watch Group",
+        "icon": "$(debug-stop)"
       }
     ],
     "viewsContainers": {
@@ -168,6 +203,16 @@
           "command": "dotnet-project-toolkit.refreshProfiles",
           "when": "view == dotnetToolkitExplorer",
           "group": "navigation"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.createGroup",
+          "when": "view == dotnetWatch",
+          "group": "navigation"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.stopAll",
+          "when": "view == dotnetWatch",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -190,6 +235,71 @@
           "command": "dotnet-project-toolkit.deletePublishProfile",
           "when": "view == dotnetToolkitExplorer && viewItem == publishProfile",
           "group": "inline@2"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.start",
+          "when": "view == dotnetWatch && viewItem == watchProject",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.runGroup",
+          "when": "view == dotnetWatch && viewItem == watchGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.deleteGroup",
+          "when": "view == dotnetWatch && viewItem == watchGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.stop",
+          "when": "view == dotnetWatch && viewItem == runningWatch",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.createGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == watchGroupsContainer",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.stopAll",
+          "when": "view == dotnetToolkitExplorer && viewItem == runningWatchesContainer",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.start",
+          "when": "view == dotnetToolkitExplorer && viewItem == watchProject",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.runGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == watchGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.stopGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == watchGroupRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.deleteGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == watchGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.deleteGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == watchGroupRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.stop",
+          "when": "view == dotnetToolkitExplorer && viewItem == runningWatch",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.stop",
+          "when": "view == dotnetToolkitExplorer && viewItem == watchProjectRunning",
+          "group": "inline"
         }
       ]
     },
