@@ -31,8 +31,8 @@ export class CreateProfileCommand extends BaseCommand {
 
         // Only ask for profile name
         const profileName = await vscode.window.showInputBox({
-            prompt: 'Enter profile name (e.g., uat-api, prod-web)',
-            placeHolder: 'uat-api',
+            prompt: 'Enter profile name (e.g., staging-api, production-web)',
+            placeHolder: 'staging-api',
             validateInput: v => {
                 if (!v?.trim()) return 'Required';
                 if (!/^[a-zA-Z0-9-_]+$/.test(v)) return 'Only letters, numbers, hyphens, underscores';
@@ -47,9 +47,9 @@ export class CreateProfileCommand extends BaseCommand {
 
         // Auto-detect environment or default to dev
         const lowerName = profileName.toLowerCase();
-        let env: 'uat' | 'prod' | 'dev' = 'dev';
-        if (lowerName.includes('uat')) env = 'uat';
-        if (lowerName.includes('prod')) env = 'prod';
+        let env: 'staging' | 'production' | 'dev' = 'dev';
+        if (lowerName.includes('staging') || lowerName.includes('uat')) env = 'staging';
+        if (lowerName.includes('production') || lowerName.includes('prod')) env = 'production';
 
         this.log(`Opening profile panel for new profile: ${profileName}`);
 

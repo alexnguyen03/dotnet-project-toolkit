@@ -160,7 +160,7 @@ export class ProjectScanner {
 
         // Sort profiles: DEV -> UAT -> PROD
         return profiles.sort((a, b) => {
-            const order: Record<string, number> = { dev: 1, uat: 2, prod: 3, unknown: 4 };
+            const order: Record<string, number> = { dev: 1, staging: 2, production: 3, unknown: 4 };
             return (order[a.environment] || 99) - (order[b.environment] || 99);
         });
     }

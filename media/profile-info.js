@@ -85,8 +85,8 @@ function init(data) {
         // Fake placeholders for create mode
         setPlaceholders({
             publishUrl: 'e.g. 192.168.10.5 or my-server.com',
-            siteName: 'e.g. MyWebSite_UAT',
-            siteUrl: 'e.g. https://uat.myapp.com',
+            siteName: 'e.g. MyWebSite_Staging',
+            siteUrl: 'e.g. https://staging.myapp.com',
             username: 'e.g. deploy_user',
             password: 'Enter server password'
         });
@@ -111,7 +111,7 @@ function init(data) {
         // Restore placeholders for edit mode
         setPlaceholders({
             publishUrl: '192.168.10.3',
-            siteName: 'TS_BUDGETCTRL_API_UAT',
+            siteName: 'TS_BUDGETCTRL_API_STAGING',
             siteUrl: 'https://example.com',
             username: 'namnh',
             password: 'Leave empty to keep existing'

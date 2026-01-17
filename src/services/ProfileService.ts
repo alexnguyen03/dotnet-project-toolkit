@@ -10,7 +10,7 @@ import { IPasswordStorage } from '../strategies/IPasswordStorage';
  */
 export interface ProfileWizardData {
     profileName: string;
-    environment: 'uat' | 'prod' | 'dev';
+    environment: 'staging' | 'production' | 'dev';
     publishUrl: string;
     siteName: string;
     username: string;
@@ -106,7 +106,7 @@ export class ProfileService implements IProfileService {
                 path: pubxmlPath,
                 fileName,
                 environment,
-                isProduction: environment === 'prod',
+                isProduction: environment === 'production',
                 publishUrl: props?.MSDeployServiceURL || props?.PublishUrl,
                 publishMethod: props?.WebPublishMethod,
             };
@@ -138,7 +138,7 @@ export class ProfileService implements IProfileService {
     private generatePubxmlContent(data: ProfileWizardData, targetFramework: string): string {
         const siteUrl = data.siteUrl || `https://${data.publishUrl}`;
         const guid = this.generateGuid();
-        const envName = data.environment === 'prod' ? 'Production' : 'Staging';
+        const envName = data.environment === 'production' ? 'Production' : 'Staging';
 
         return `<?xml version="1.0" encoding="utf-8"?>
 <!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
@@ -190,17 +190,17 @@ export class ProfileService implements IProfileService {
         return filePath;
     }
 
-    private detectEnvironment(envName: string | undefined, fileName: string): 'uat' | 'prod' | 'dev' | 'unknown' {
+    private detectEnvironment(envName: string | undefined, fileName: string): 'staging' | 'production' | 'dev' | 'unknown' {
         if (envName) {
             const lower = envName.toLowerCase();
-            if (lower === 'production') return 'prod';
-            if (lower === 'staging' || lower === 'uat') return 'uat';
+            if (lower === 'production' || lower === 'prod') return 'production';
+            if (lower === 'staging' || lower === 'uat') return 'staging';
             if (lower === 'development' || lower === 'dev') return 'dev';
         }
 
         const lower = fileName.toLowerCase();
-        if (lower.includes('prod')) return 'prod';
-        if (lower.includes('uat')) return 'uat';
+        if (lower.includes('production') || lower.includes('prod')) return 'production';
+        if (lower.includes('staging') || lower.includes('uat')) return 'staging';
         if (lower.includes('dev')) return 'dev';
         return 'unknown';
     }

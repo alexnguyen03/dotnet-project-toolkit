@@ -33,13 +33,13 @@
   "contributes": {
     "commands": [
       {
-        "command": "dotnet-project-toolkit.deployToUatApi",
-        "title": ".NET Toolkit: Deploy API to UAT",
+        "command": "dotnet-project-toolkit.deployToStagingApi",
+        "title": ".NET Toolkit: Deploy API to Staging",
         "icon": "$(rocket)"
       },
       {
-        "command": "dotnet-project-toolkit.deployToUatClient",
-        "title": ".NET Toolkit: Deploy Client to UAT",
+        "command": "dotnet-project-toolkit.deployToStagingClient",
+        "title": ".NET Toolkit: Deploy Client to Staging",
         "icon": "$(rocket)"
       },
       {

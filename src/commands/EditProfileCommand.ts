@@ -68,15 +68,15 @@ export class EditProfileCommand extends BaseCommand {
     private async collectProfileData(existing: PublishProfileInfo): Promise<ProfileWizardData | undefined> {
         // Step 1: Profile name (readonly, show current)
         const profileName = existing.fileName;
-        
+
         vscode.window.showInformationMessage(`Editing profile: ${profileName}`);
 
         // Step 2: Environment
-        const currentEnv = existing.environment === 'unknown' ? 'uat' : existing.environment;
+        const currentEnv = existing.environment === 'unknown' ? 'staging' : existing.environment;
         const env = await vscode.window.showQuickPick([
-            { label: 'UAT', value: 'uat' as const, description: currentEnv === 'uat' ? '(current)' : '' },
-            { label: 'PROD', value: 'prod' as const, description: currentEnv === 'prod' ? '(current)' : '' },
-            { label: 'DEV', value: 'dev' as const, description: currentEnv === 'dev' ? '(current)' : '' },
+            { label: 'Staging', value: 'staging' as const, description: currentEnv === 'staging' ? '(current)' : '' },
+            { label: 'Production', value: 'production' as const, description: currentEnv === 'production' ? '(current)' : '' },
+            { label: 'Development', value: 'dev' as const, description: currentEnv === 'dev' ? '(current)' : '' },
         ], { placeHolder: `Current: ${currentEnv.toUpperCase()}` });
         if (!env) return undefined;
 

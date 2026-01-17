@@ -28,7 +28,7 @@ export class DeployProfileCommand implements ICommand {
         const environment = profile.environment.toUpperCase();
 
         // 1. Confirm deployment (for ALL environments)
-        const isProd = profile.environment === 'prod';
+        const isProd = profile.environment === 'production';
         const confirmMessage = isProd
             ? `⚠️ Deploy to PRODUCTION: ${profile.name}?`
             : `Deploy to ${environment}: ${profile.name}?`;

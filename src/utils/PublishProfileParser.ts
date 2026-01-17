@@ -29,7 +29,7 @@ export class PublishProfileParser {
             const parsed = this.xmlParser.parse(xmlContent);
 
             const fileName = path.basename(pubxmlPath, '.pubxml');
-            
+
             // Extract properties from PropertyGroup
             const propertyGroup = parsed?.Project?.PropertyGroup;
             const publishUrl = propertyGroup?.PublishUrl || propertyGroup?.MSDeployServiceURL;
@@ -38,7 +38,7 @@ export class PublishProfileParser {
             const siteUrl = propertyGroup?.SiteUrlToLaunchAfterPublish;
             const siteName = propertyGroup?.DeployIisAppPath || propertyGroup?.MsDeployAppPath;
             const userName = propertyGroup?.UserName;
-            
+
             // Detect environment from EnvironmentName field first, fallback to filename
             const environment = this.detectEnvironmentFromXml(environmentName) || this.detectEnvironment(fileName);
 
@@ -47,7 +47,7 @@ export class PublishProfileParser {
                 path: pubxmlPath,
                 fileName: fileName,
                 environment: environment,
-                isProduction: environment === 'prod',
+                isProduction: environment === 'production',
                 publishUrl: publishUrl,
                 publishMethod: publishMethod,
                 siteUrl: siteUrl,
@@ -63,23 +63,23 @@ export class PublishProfileParser {
     /**
      * Detect environment from XML EnvironmentName field
      */
-    private detectEnvironmentFromXml(environmentName: string | undefined): 'uat' | 'prod' | 'dev' | null {
+    private detectEnvironmentFromXml(environmentName: string | undefined): 'staging' | 'production' | 'dev' | null {
         if (!environmentName) {
             return null;
         }
-        
+
         const lowerName = environmentName.toLowerCase();
-        
+
         if (lowerName === 'production') {
-            return 'prod';
+            return 'production';
         }
-        if (lowerName === 'staging' || lowerName === 'uat') {
-            return 'uat';
+        if (lowerName === 'staging' || lowerName === 'staging') {
+            return 'staging';
         }
         if (lowerName === 'development' || lowerName === 'dev') {
             return 'dev';
         }
-        
+
         return null;
     }
 
@@ -87,19 +87,19 @@ export class PublishProfileParser {
      * Detect environment from profile filename
      * Examples: "uat-api" -> "uat", "prod-web" -> "prod"
      */
-    private detectEnvironment(fileName: string): 'uat' | 'prod' | 'dev' | 'unknown' {
+    private detectEnvironment(fileName: string): 'staging' | 'production' | 'dev' | 'unknown' {
         const lowerName = fileName.toLowerCase();
-        
+
         if (lowerName.includes('prod') || lowerName.includes('production')) {
-            return 'prod';
+            return 'production';
         }
-        if (lowerName.includes('uat')) {
-            return 'uat';
+        if (lowerName.includes('staging')) {
+            return 'staging';
         }
         if (lowerName.includes('dev') || lowerName.includes('development')) {
             return 'dev';
         }
-        
+
         return 'unknown';
     }
 
@@ -109,11 +109,11 @@ export class PublishProfileParser {
      */
     private formatDisplayName(fileName: string, environment: string): string {
         const envLabel = environment.toUpperCase();
-        
+
         if (environment === 'unknown') {
             return fileName;
         }
-        
+
         return `${fileName} [${envLabel}]`;
     }
 }

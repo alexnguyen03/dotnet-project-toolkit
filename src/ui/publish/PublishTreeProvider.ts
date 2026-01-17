@@ -5,7 +5,7 @@ import { ProjectInfo, PublishProfileInfo } from '../../models/ProjectModels';
 export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeItem> {
 	private _onDidChangeTreeData: vscode.EventEmitter<PublishTreeItem | undefined | null | void> = new vscode.EventEmitter<PublishTreeItem | undefined | null | void>();
 	readonly onDidChangeTreeData: vscode.Event<PublishTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
-	
+
 	private scanner: ProjectScanner;
 
 	constructor(private workspaceRoot: string | undefined) {
@@ -35,7 +35,7 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 		if (!element) {
 			// Root level - scan workspace
 			const workspace = await this.scanner.scanWorkspace(this.workspaceRoot);
-			
+
 			if (workspace.projects.length === 0) {
 				return [
 					new PublishTreeItem(
@@ -51,7 +51,7 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 			// Group by project type or show flat list
 			const apiProjects = workspace.projects.filter(p => p.projectType === 'api');
 			const webProjects = workspace.projects.filter(p => p.projectType === 'web');
-			const otherProjects = workspace.projects.filter(p => 
+			const otherProjects = workspace.projects.filter(p =>
 				p.projectType !== 'api' && p.projectType !== 'web' && p.projectType !== 'library'
 			);
 
@@ -76,7 +76,7 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 		if (element.contextValue === 'project' && element.projectInfo) {
 			// Project level - show profiles or placeholder
 			const project = element.projectInfo;
-			
+
 			if (project.profiles.length === 0) {
 				return [
 					new PublishTreeItem(
@@ -90,7 +90,7 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 			}
 
 			// Show publish profiles
-			return project.profiles.map(profile => 
+			return project.profiles.map(profile =>
 				new PublishTreeItem(
 					profile.name,
 					vscode.TreeItemCollapsibleState.None,
@@ -111,7 +111,7 @@ export class PublishTreeItem extends vscode.TreeItem {
 	public readonly projectInfo?: ProjectInfo;
 	public readonly profileInfo?: PublishProfileInfo;
 	public readonly projectName?: string;
-	
+
 	constructor(
 		public readonly label: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
@@ -149,7 +149,7 @@ export class PublishTreeItem extends vscode.TreeItem {
 						default:
 							this.iconPath = new vscode.ThemeIcon('file-code');
 					}
-					
+
 					// Show profile count in description
 					const profileCount = this.projectInfo.profiles.length;
 					if (profileCount > 0) {
@@ -161,12 +161,12 @@ export class PublishTreeItem extends vscode.TreeItem {
 				if (this.profileInfo) {
 					// Environment-specific colored icons
 					const env = this.profileInfo.environment;
-					if (env === 'prod') {
+					if (env === 'production') {
 						this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
-						this.description = '🔴 PROD';
-					} else if (env === 'uat') {
+						this.description = '🔴 PRODUCTION';
+					} else if (env === 'staging') {
 						this.iconPath = new vscode.ThemeIcon('beaker', new vscode.ThemeColor('charts.blue'));
-						this.description = '🔵 UAT';
+						this.description = '🔵 STAGING';
 					} else if (env === 'dev') {
 						this.iconPath = new vscode.ThemeIcon('code', new vscode.ThemeColor('charts.green'));
 						this.description = '🟢 DEV';
@@ -174,7 +174,7 @@ export class PublishTreeItem extends vscode.TreeItem {
 						this.iconPath = new vscode.ThemeIcon('circle-outline');
 						this.description = '⚪';
 					}
-					
+
 					// Click to open profile info panel
 					this.command = {
 						command: 'dotnet-project-toolkit.profileInfo',

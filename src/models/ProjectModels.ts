@@ -13,7 +13,7 @@ export interface PublishProfileInfo {
     fileName: string;
 
     /** Detected environment type */
-    environment: 'uat' | 'prod' | 'dev' | 'unknown';
+    environment: 'staging' | 'production' | 'dev' | 'unknown';
 
     /** Whether this is a production profile */
     isProduction: boolean;

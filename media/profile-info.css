@@ -129,12 +129,12 @@ h1 {
     text-transform: uppercase;
 }
 
-.badge.uat {
+.badge.staging {
     background: #2196f3;
     color: white;
 }
 
-.badge.prod {
+.badge.production {
     background: #f44336;
     color: white;
 }
