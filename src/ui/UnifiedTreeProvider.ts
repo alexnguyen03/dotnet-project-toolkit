@@ -9,7 +9,16 @@ import {
     ProjectItem,
     InfoItem
 } from './WatchTreeProvider';
-import { DebugTreeProvider, DebugTreeItem } from './debug/DebugTreeProvider';
+import { DebugTreeProvider } from './debug/DebugTreeProvider';
+import {
+    DebugTreeItem,
+    DebugGroupItem,
+    DebugProjectItem,
+    GroupContainerItem as DebugGroupContainerItem,
+    ProjectContainerItem as DebugProjectContainerItem,
+    InfoItem as DebugInfoItem,
+    DebugWarningItem
+} from './debug/DebugTreeProvider';
 import { HistoryTreeProvider, HistoryTreeItem } from './history/HistoryTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
 
@@ -26,11 +35,12 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
     constructor(
         workspaceRoot: string | undefined,
         historyManager: HistoryManager,
-        watchTreeProvider: WatchTreeProvider
+        watchTreeProvider: WatchTreeProvider,
+        debugTreeProvider: DebugTreeProvider
     ) {
         this.publishProvider = new PublishTreeProvider(workspaceRoot);
         this.watchProvider = watchTreeProvider;
-        this.debugProvider = new DebugTreeProvider();
+        this.debugProvider = debugTreeProvider;
         this.historyProvider = new HistoryTreeProvider(historyManager);
 
         // Forward events from child providers
@@ -93,8 +103,8 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
 
         // Debug items
-        if (element instanceof DebugTreeItem) {
-            return this.debugProvider.getChildren(element);
+        if (this.isDebugItem(element)) {
+            return this.debugProvider.getChildren(element as DebugTreeItem);
         }
 
         // History items
@@ -112,6 +122,15 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
             element instanceof WatchGroupItem ||
             element instanceof ProjectItem ||
             element instanceof InfoItem;
+    }
+
+    private isDebugItem(element: vscode.TreeItem): boolean {
+        return element instanceof DebugGroupContainerItem ||
+            element instanceof DebugProjectContainerItem ||
+            element instanceof DebugGroupItem ||
+            element instanceof DebugProjectItem ||
+            element instanceof DebugInfoItem ||
+            element instanceof DebugWarningItem;
     }
 }
 

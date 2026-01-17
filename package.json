@@ -136,6 +136,36 @@
         "command": "dotnet-project-toolkit.watch.stopGroup",
         "title": "Stop Watch Group",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "dotnet-project-toolkit.debug.start",
+        "title": "Start Debugging",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "dotnet-project-toolkit.debug.stop",
+        "title": "Stop Debugging",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "dotnet-project-toolkit.debug.createGroup",
+        "title": "Create Debug Group",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dotnet-project-toolkit.debug.runGroup",
+        "title": "Run Debug Group",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "dotnet-project-toolkit.debug.stopGroup",
+        "title": "Stop Debug Group",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "dotnet-project-toolkit.debug.deleteGroup",
+        "title": "Delete Debug Group",
+        "icon": "$(trash)"
       }
     ],
     "viewsContainers": {
@@ -212,6 +242,11 @@
         {
           "command": "dotnet-project-toolkit.watch.stopAll",
           "when": "view == dotnetWatch",
+          "group": "navigation"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.createGroup",
+          "when": "view == dotnetDebug",
           "group": "navigation"
         }
       ],
@@ -299,6 +334,71 @@
         {
           "command": "dotnet-project-toolkit.watch.stop",
           "when": "view == dotnetToolkitExplorer && viewItem == watchProjectRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.createGroup",
+          "when": "view == dotnetDebug && viewItem == debugGroupsContainer",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.start",
+          "when": "view == dotnetDebug && viewItem == debugProject",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.stop",
+          "when": "view == dotnetDebug && viewItem == debugProjectRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.runGroup",
+          "when": "view == dotnetDebug && viewItem == debugGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.stopGroup",
+          "when": "view == dotnetDebug && viewItem == debugGroupRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.deleteGroup",
+          "when": "view == dotnetDebug && viewItem == debugGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.deleteGroup",
+          "when": "view == dotnetDebug && viewItem == debugGroupRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.start",
+          "when": "view == dotnetToolkitExplorer && viewItem == debugProject",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.stop",
+          "when": "view == dotnetToolkitExplorer && viewItem == debugProjectRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.runGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == debugGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.stopGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == debugGroupRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.deleteGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == debugGroup",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.debug.deleteGroup",
+          "when": "view == dotnetToolkitExplorer && viewItem == debugGroupRunning",
           "group": "inline"
         }
       ]

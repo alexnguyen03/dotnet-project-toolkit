@@ -28,7 +28,7 @@ export class ProjectScanner {
         }
 
         const projects = await this.findProjects(workspaceRoot);
-        
+
         // Enrich each project with publish profiles
         for (const project of projects) {
             project.profiles = await this.findPublishProfiles(project.projectDir);
@@ -59,7 +59,7 @@ export class ProjectScanner {
      */
     private async findProjects(rootPath: string): Promise<ProjectInfo[]> {
         const projects: ProjectInfo[] = [];
-        
+
         // Use VS Code's findFiles API for better performance
         const csprojFiles = await vscode.workspace.findFiles(
             '**/*.csproj',
@@ -71,6 +71,7 @@ export class ProjectScanner {
             const projectDir = path.dirname(csprojPath);
             const projectName = path.basename(csprojPath, '.csproj');
             const projectType = this.detectProjectType(projectName, csprojPath);
+            const targetFramework = await this.extractTargetFramework(csprojPath);
 
             projects.push({
                 name: projectName,
@@ -78,10 +79,55 @@ export class ProjectScanner {
                 projectDir: projectDir,
                 projectType: projectType,
                 profiles: [], // Will be populated later
+                targetFramework: targetFramework,
             });
         }
 
         return projects;
+    }
+
+    /**
+     * Extract TargetFramework from .csproj file
+     */
+    private async extractTargetFramework(csprojPath: string): Promise<string | undefined> {
+        try {
+            const content = fs.readFileSync(csprojPath, 'utf-8');
+            const { XMLParser } = require('fast-xml-parser');
+            const parser = new XMLParser({
+                ignoreAttributes: false,
+                attributeNamePrefix: '@_'
+            });
+
+            const parsed = parser.parse(content);
+            const project = parsed?.Project;
+
+            if (!project) return undefined;
+
+            // Look for PropertyGroup with TargetFramework or TargetFrameworks
+            const propertyGroups = Array.isArray(project.PropertyGroup)
+                ? project.PropertyGroup
+                : [project.PropertyGroup];
+
+            for (const group of propertyGroups) {
+                if (!group) continue;
+
+                // Single target framework
+                if (group.TargetFramework) {
+                    return group.TargetFramework;
+                }
+
+                // Multiple target frameworks - take the first one
+                if (group.TargetFrameworks) {
+                    const frameworks = group.TargetFrameworks.split(';');
+                    return frameworks[0]?.trim();
+                }
+            }
+
+            return undefined;
+        } catch (error) {
+            console.error(`Failed to extract TargetFramework from ${csprojPath}:`, error);
+            return undefined;
+        }
     }
 
     /**
@@ -97,12 +143,12 @@ export class ProjectScanner {
 
         try {
             const files = fs.readdirSync(publishProfilesDir);
-            
+
             for (const file of files) {
                 if (file.endsWith('.pubxml')) {
                     const pubxmlPath = path.join(publishProfilesDir, file);
                     const profileInfo = this.parser.parseProfile(pubxmlPath);
-                    
+
                     if (profileInfo) {
                         profiles.push(profileInfo);
                     }
@@ -124,7 +170,7 @@ export class ProjectScanner {
      */
     private detectProjectType(projectName: string, csprojPath: string): 'api' | 'web' | 'library' | 'unknown' {
         const lowerName = projectName.toLowerCase();
-        
+
         if (lowerName.includes('api')) {
             return 'api';
         }
@@ -137,7 +183,7 @@ export class ProjectScanner {
 
         // TODO: Could also read .csproj content to detect SDK type
         // <Project Sdk="Microsoft.NET.Sdk.Web"> vs <Project Sdk="Microsoft.NET.Sdk">
-        
+
         return 'unknown';
     }
 
@@ -147,7 +193,7 @@ export class ProjectScanner {
     private detectServerClientStructure(projects: ProjectInfo[]): boolean {
         const hasServer = projects.some(p => p.projectDir.includes('Server') || p.projectDir.includes('server'));
         const hasClient = projects.some(p => p.projectDir.includes('Client') || p.projectDir.includes('client'));
-        
+
         return hasServer && hasClient;
     }
 }
