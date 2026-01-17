@@ -15,6 +15,13 @@ export class ProfileInfoPanel {
     // Map to store active panels: key -> panel
     private static panels: Map<string, ProfileInfoPanel> = new Map();
 
+    /**
+     * Update all active panels
+     */
+    public static updateAll() {
+        this.panels.forEach(panel => panel.update());
+    }
+
     private readonly panel: vscode.WebviewPanel;
     private disposables: vscode.Disposable[] = [];
 

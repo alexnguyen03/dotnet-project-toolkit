@@ -1,7 +1,24 @@
 import * as vscode from 'vscode';
 import { PublishTreeProvider, PublishTreeItem } from './publish/PublishTreeProvider';
-import { WatchTreeProvider, WatchTreeItem } from './watch/WatchTreeProvider';
-import { DebugTreeProvider, DebugTreeItem } from './debug/DebugTreeProvider';
+import { WatchTreeProvider, WatchTreeItem } from './WatchTreeProvider';
+import {
+    GroupContainerItem,
+    ProjectContainerItem,
+    RunningWatchItem,
+    WatchGroupItem,
+    ProjectItem,
+    InfoItem
+} from './WatchTreeProvider';
+import { DebugTreeProvider } from './debug/DebugTreeProvider';
+import {
+    DebugTreeItem,
+    DebugGroupItem,
+    DebugProjectItem,
+    GroupContainerItem as DebugGroupContainerItem,
+    ProjectContainerItem as DebugProjectContainerItem,
+    InfoItem as DebugInfoItem,
+    DebugWarningItem
+} from './debug/DebugTreeProvider';
 import { HistoryTreeProvider, HistoryTreeItem } from './history/HistoryTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
 
@@ -15,11 +32,22 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
     private debugProvider: DebugTreeProvider;
     private historyProvider: HistoryTreeProvider;
 
-    constructor(workspaceRoot: string | undefined, historyManager: HistoryManager) {
+    constructor(
+        workspaceRoot: string | undefined,
+        historyManager: HistoryManager,
+        watchTreeProvider: WatchTreeProvider,
+        debugTreeProvider: DebugTreeProvider
+    ) {
         this.publishProvider = new PublishTreeProvider(workspaceRoot);
-        this.watchProvider = new WatchTreeProvider();
-        this.debugProvider = new DebugTreeProvider();
+        this.watchProvider = watchTreeProvider;
+        this.debugProvider = debugTreeProvider;
         this.historyProvider = new HistoryTreeProvider(historyManager);
+
+        // Forward events from child providers
+        this.publishProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
+        this.watchProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
+        this.debugProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
+        this.historyProvider.onDidChangeTreeData(() => this._onDidChangeTreeData.fire());
     }
 
     refresh(): void {
@@ -70,13 +98,13 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
 
         // Watch items
-        if (element instanceof WatchTreeItem) {
-            return this.watchProvider.getChildren(element);
+        if (this.isWatchItem(element)) {
+            return this.watchProvider.getChildren(element as WatchTreeItem);
         }
 
         // Debug items
-        if (element instanceof DebugTreeItem) {
-            return this.debugProvider.getChildren(element);
+        if (this.isDebugItem(element)) {
+            return this.debugProvider.getChildren(element as DebugTreeItem);
         }
 
         // History items
@@ -85,6 +113,24 @@ export class UnifiedTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
 
         return [];
+    }
+
+    private isWatchItem(element: vscode.TreeItem): boolean {
+        return element instanceof GroupContainerItem ||
+            element instanceof ProjectContainerItem ||
+            element instanceof RunningWatchItem ||
+            element instanceof WatchGroupItem ||
+            element instanceof ProjectItem ||
+            element instanceof InfoItem;
+    }
+
+    private isDebugItem(element: vscode.TreeItem): boolean {
+        return element instanceof DebugGroupContainerItem ||
+            element instanceof DebugProjectContainerItem ||
+            element instanceof DebugGroupItem ||
+            element instanceof DebugProjectItem ||
+            element instanceof DebugInfoItem ||
+            element instanceof DebugWarningItem;
     }
 }
 
