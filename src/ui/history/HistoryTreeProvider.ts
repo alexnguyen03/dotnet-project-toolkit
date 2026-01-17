@@ -31,28 +31,21 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeI
 				];
 			}
 
-			// Group by date
-			const groupByDate = vscode.workspace.getConfiguration('dotnetToolkit').get<boolean>('historyGroupByDate', true);
-
-			if (groupByDate) {
-				const groups = this.groupByDate(history);
-				return Object.entries(groups).map(([groupName, records]) =>
-					new HistoryTreeItem(
-						`${groupName} (${records.length})`,
-						vscode.TreeItemCollapsibleState.Expanded,
-						'dateGroup',
-						undefined,
-						records
-					)
-				);
-			} else {
-				// Show all records directly
-				return history.map(record => this.createDeploymentItem(record));
-			}
+			// Group by Project
+			const groups = this.groupByProject(history);
+			return Object.entries(groups).map(([groupName, records]) =>
+				new HistoryTreeItem(
+					`${groupName} (${records.length})`,
+					vscode.TreeItemCollapsibleState.Expanded,
+					'projectGroup',
+					undefined,
+					records
+				)
+			);
 		}
 
-		if (element.contextValue === 'dateGroup' && element.records) {
-			// Show deployments in this date group
+		if (element.contextValue === 'projectGroup' && element.records) {
+			// Show deployments in this project group
 			return element.records.map(record => this.createDeploymentItem(record));
 		}
 
@@ -64,28 +57,27 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeI
 		return [];
 	}
 
-	private groupByDate(history: DeploymentRecord[]): Record<string, DeploymentRecord[]> {
-		const groups: Record<string, DeploymentRecord[]> = {
-			'Today': [],
-			'Yesterday': [],
-			'This Week': [],
-			'Older': []
-		};
+	private groupByProject(history: DeploymentRecord[]): Record<string, DeploymentRecord[]> {
+		const groups: Record<string, DeploymentRecord[]> = {};
 
 		for (const record of history) {
-			const group = DeploymentRecordHelper.getDateGroup(record.startTime);
-			groups[group].push(record);
+			const project = record.projectName || 'Unknown Project';
+			if (!groups[project]) {
+				groups[project] = [];
+			}
+			groups[project].push(record);
 		}
 
-		// Remove empty groups
+		// Sort groups by key (project name)
 		return Object.fromEntries(
-			Object.entries(groups).filter(([_, records]) => records.length > 0)
+			Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
 		);
 	}
 
 	private createDeploymentItem(record: DeploymentRecord): HistoryTreeItem {
 		const statusIcon = this.getStatusIcon(record.status);
 		const durationText = record.duration ? ` (${DeploymentRecordHelper.formatDuration(record.duration)})` : '';
+		const timeFormat = new Date(record.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 		const label = `${statusIcon} ${record.profileName}${durationText}`;
 
 		return new HistoryTreeItem(
@@ -176,8 +168,8 @@ export class HistoryTreeItem extends vscode.TreeItem {
 
 	private setupItem() {
 		switch (this.contextValue) {
-			case 'dateGroup':
-				this.iconPath = new vscode.ThemeIcon('calendar');
+			case 'projectGroup':
+				this.iconPath = new vscode.ThemeIcon('package'); // or 'folder'
 				break;
 			case 'deployment':
 				if (this.record) {

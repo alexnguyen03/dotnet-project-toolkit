@@ -536,6 +536,25 @@ export class ProfileInfoPanel {
             font-size: 0.8em;
             opacity: 0.8;
         }
+        .history-duration {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 14px;
+            height: 14px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -551,9 +570,7 @@ export class ProfileInfoPanel {
             </div>
             <div class="toolbar">
                 <span class="badge ${profile.environment}">${profile.environment.toUpperCase()}</span>
-                <button type="button" class="btn-success" onclick="deploy()" title="Deploy to this environment">
-                    🚀 Deploy
-                </button>
+                ${this.renderDeployButton(profile.fileName)}
             </div>
         </div>
     </div>
@@ -609,7 +626,16 @@ export class ProfileInfoPanel {
                 🗑️ Delete
             </button>
         </div>
+        </div>
     </form>
+    
+    <script>
+        // Disable forms if deploying
+        if (${this.isDeploying(profile.fileName)}) {
+            const inputs = document.querySelectorAll('input, select, button');
+            inputs.forEach(el => el.disabled = true);
+        }
+    </script>
     
     <div class="history-section">
         <h2>📜 Publish History</h2>
@@ -732,6 +758,25 @@ export class ProfileInfoPanel {
         }).join('');
 
         return `<div class="history-list">${items}</div>`;
+    }
+
+    private isDeploying(profileName: string): boolean {
+        const allHistory = this.historyManager.getAllHistory();
+        const latest = allHistory.find(h => h.profileName === profileName);
+        return latest?.status === 'in-progress';
+    }
+
+    private renderDeployButton(profileName: string): string {
+        if (this.isDeploying(profileName)) {
+            return `
+                <button type="button" class="btn-success" disabled title="Deployment in progress...">
+                    <div class="spinner"></div> Deploying...
+                </button>`;
+        }
+        return `
+            <button type="button" class="btn-success" onclick="deploy()" title="Deploy to this environment">
+                🚀 Deploy
+            </button>`;
     }
 
     private getEnvBadge(env: string): string {
