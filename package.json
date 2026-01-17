@@ -287,6 +287,16 @@
           "group": "inline"
         },
         {
+          "command": "dotnet-project-toolkit.watch.stopGroup",
+          "when": "view == dotnetWatch && viewItem == watchGroupRunning",
+          "group": "inline"
+        },
+        {
+          "command": "dotnet-project-toolkit.watch.deleteGroup",
+          "when": "view == dotnetWatch && viewItem == watchGroupRunning",
+          "group": "inline"
+        },
+        {
           "command": "dotnet-project-toolkit.watch.stop",
           "when": "view == dotnetWatch && viewItem == runningWatch",
           "group": "inline"
