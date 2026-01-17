@@ -292,6 +292,11 @@
           "group": "inline"
         },
         {
+          "command": "dotnet-project-toolkit.watch.stop",
+          "when": "view == dotnetWatch && viewItem == watchProjectRunning",
+          "group": "inline"
+        },
+        {
           "command": "dotnet-project-toolkit.watch.createGroup",
           "when": "view == dotnetToolkitExplorer && viewItem == watchGroupsContainer",
           "group": "inline"
@@ -456,7 +461,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.108.1",
+    "@types/vscode": "^1.95.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.2",
