@@ -24,12 +24,25 @@ import { DebugConfigService } from '../services/DebugConfigService';
 import { DebugTreeProvider } from '../ui/debug/DebugTreeProvider';
 import { PublishTreeProvider } from '../ui/publish/PublishTreeProvider';
 
+// Import new abstractions
+import { ConfigurationService } from '../services/ConfigurationService';
+import { FileSystemRepository } from '../repositories/FileSystemRepository';
+import { FastXmlParser } from '../parsers/FastXmlParser';
+import { ProjectAnalyzer } from '../analyzers/ProjectAnalyzer';
+import { ProfileXmlGenerator } from '../generators/ProfileXmlGenerator';
+import { ProfileRepository } from '../repositories/ProfileRepository';
+import { EnvironmentDetector } from '../detectors/EnvironmentDetector';
+
 /**
  * Service Container - Dependency Injection
  * Central place to create and wire all dependencies
+ * Refactored to use new abstraction layers
  */
 export class ServiceContainer {
     readonly outputChannel: vscode.OutputChannel;
+    readonly configService: ConfigurationService;
+    readonly fileSystem: FileSystemRepository;
+    readonly xmlParser: FastXmlParser;
     readonly passwordStorage: IPasswordStorage;
     readonly profileService: IProfileService;
     readonly deploymentService: IDeploymentService;
@@ -50,11 +63,16 @@ export class ServiceContainer {
         // Create output channel
         this.outputChannel = vscode.window.createOutputChannel('.NET Toolkit');
 
-        // Get workspace root
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+        // Create infrastructure services
+        this.configService = new ConfigurationService();
+        this.fileSystem = new FileSystemRepository();
+        this.xmlParser = new FastXmlParser();
 
-        // Create password storage (use SecretStorage by default for security)
-        const storageType = vscode.workspace.getConfiguration('dotnetToolkit').get<string>('passwordStorage', 'secret');
+        // Get workspace root
+        const workspaceRoot = this.configService.getWorkspaceRoot() || '';
+
+        // Create password storage (use configuration service)
+        const storageType = this.configService.getPasswordStorageType();
 
         if (storageType === 'envvar') {
             this.passwordStorage = new EnvVarPasswordStorage(this.outputChannel);
@@ -63,8 +81,25 @@ export class ServiceContainer {
             this.passwordStorage = new SecretPasswordStorage(this.outputChannel, context.secrets);
         }
 
-        // Create services
-        this.profileService = new ProfileService(this.outputChannel, this.passwordStorage);
+        // Create specialized services for ProfileService
+        const environmentDetector = new EnvironmentDetector();
+        const projectAnalyzer = new ProjectAnalyzer(this.xmlParser, this.fileSystem);
+        const profileXmlGenerator = new ProfileXmlGenerator();
+        const profileRepository = new ProfileRepository(this.fileSystem);
+
+        // Create ProfileService with all dependencies
+        this.profileService = new ProfileService(
+            this.xmlParser,
+            this.fileSystem,
+            projectAnalyzer,
+            profileXmlGenerator,
+            profileRepository,
+            environmentDetector,
+            this.passwordStorage,
+            this.outputChannel
+        );
+
+        // Create other services
         this.deploymentService = new DeploymentService(this.outputChannel, this.passwordStorage);
         this.historyManager = new HistoryManager(context);
         this.projectScanner = new ProjectScanner();
