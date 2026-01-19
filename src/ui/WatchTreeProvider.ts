@@ -34,13 +34,13 @@ export class WatchTreeProvider implements vscode.TreeDataProvider<WatchTreeItem>
     async getChildren(element?: WatchTreeItem): Promise<WatchTreeItem[]> {
         if (!element) {
             return [
-                new GroupContainerItem('Watch Groups', 'groups', 'watchGroupsContainer'),
-                new ProjectContainerItem('All Projects', 'projects')
+                new GroupContainerItem('Watch Groups', 'watch-groups', 'watchGroupsContainer'),
+                new ProjectContainerItem('All Projects', 'watch-projects')
             ];
         }
 
         if (element instanceof GroupContainerItem) {
-            if (element.id === 'groups') {
+            if (element.id === 'watch-groups') {
                 const groups = this.configService.getGroups();
                 if (groups.length === 0) {
                     return [new InfoItem('No watch groups created')];

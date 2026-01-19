@@ -35,19 +35,19 @@ export class DebugTreeProvider implements vscode.TreeDataProvider<DebugTreeItem>
 			if (!this.debugService.hasDebugger) {
 				return [
 					new DebugWarningItem('⚠️ No C# Debugger Detected'),
-					new GroupContainerItem('Debug Groups', 'groups', 'debugGroupsContainer'),
-					new ProjectContainerItem('All Projects', 'projects', this.debugService.hasActiveSessions)
+					new GroupContainerItem('Debug Groups', 'debug-groups', 'debugGroupsContainer'),
+					new ProjectContainerItem('All Projects', 'debug-projects', this.debugService.hasActiveSessions)
 				];
 			}
 
 			return [
-				new GroupContainerItem('Debug Groups', 'groups', 'debugGroupsContainer'),
-				new ProjectContainerItem('All Projects', 'projects', this.debugService.hasActiveSessions)
+				new GroupContainerItem('Debug Groups', 'debug-groups', 'debugGroupsContainer'),
+				new ProjectContainerItem('All Projects', 'debug-projects', this.debugService.hasActiveSessions)
 			];
 		}
 
 		if (element instanceof GroupContainerItem) {
-			if (element.id === 'groups') {
+			if (element.id === 'debug-groups') {
 				const groups = this.configService.getGroups();
 				if (groups.length === 0) {
 					return [new InfoItem('No debug groups created')];
