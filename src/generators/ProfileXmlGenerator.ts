@@ -29,6 +29,7 @@ export class ProfileXmlGenerator implements IProfileXmlGenerator {
   <PropertyGroup>
     <WebPublishMethod>MSDeploy</WebPublishMethod>
     <LaunchSiteAfterPublish>${data.openBrowserOnDeploy !== false}</LaunchSiteAfterPublish>
+    <EnableStdoutLog>${data.enableStdoutLog === true}</EnableStdoutLog>
     <LastUsedBuildConfiguration>Release</LastUsedBuildConfiguration>
     <LastUsedPlatform>Any CPU</LastUsedPlatform>
     <SiteUrlToLaunchAfterPublish>${siteUrl}</SiteUrlToLaunchAfterPublish>

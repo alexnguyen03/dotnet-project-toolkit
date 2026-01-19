@@ -99,8 +99,11 @@ export class ServiceContainer {
             this.outputChannel
         );
 
+        // Create WebConfigModifier
+        const webConfigModifier = new (require('../services/WebConfigModifier').WebConfigModifier)(this.outputChannel);
+
         // Create other services
-        this.deploymentService = new DeploymentService(this.outputChannel, this.passwordStorage);
+        this.deploymentService = new DeploymentService(this.outputChannel, this.passwordStorage, webConfigModifier);
         this.historyManager = new HistoryManager(context);
         this.projectScanner = new ProjectScanner();
         this.watchConfigService = new WatchConfigService(context);

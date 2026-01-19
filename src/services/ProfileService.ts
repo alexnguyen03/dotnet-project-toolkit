@@ -21,6 +21,7 @@ export interface ProfileWizardData {
     password: string;
     siteUrl?: string;
     openBrowserOnDeploy?: boolean;
+    enableStdoutLog?: boolean;
 }
 
 /**
@@ -138,6 +139,19 @@ export class ProfileService implements IProfileService {
                  this.log(`[Parse] ${fileName}: LaunchSiteAfterPublish is missing/undefined`);
             }
 
+            // Parse enableStdoutLog
+            let enableStdoutLog: boolean | undefined = undefined;
+            if (props?.EnableStdoutLog !== undefined) {
+                const val = props.EnableStdoutLog;
+                if (typeof val === 'boolean') {
+                    enableStdoutLog = val;
+                } else if (typeof val === 'string') {
+                    const lower = val.toLowerCase();
+                    if (lower === 'true') enableStdoutLog = true;
+                    if (lower === 'false') enableStdoutLog = false;
+                }
+            }
+
             return {
                 name: fileName, // Simplified - no longer formatting display name here
                 path: pubxmlPath,
@@ -149,7 +163,8 @@ export class ProfileService implements IProfileService {
                 siteName: props?.DeployIisAppPath,
                 siteUrl: props?.SiteUrlToLaunchAfterPublish,
                 userName: props?.UserName,
-                openBrowserOnDeploy
+                openBrowserOnDeploy,
+                enableStdoutLog
             };
         } catch (error) {
             this.log(`Error parsing ${pubxmlPath}: ${error}`);

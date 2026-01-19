@@ -59,6 +59,9 @@ function init(data) {
     const openBrowserCheckbox = document.getElementById('openBrowserOnDeploy');
     if (openBrowserCheckbox) openBrowserCheckbox.checked = data.openBrowserOnDeploy !== false; // Default true if undefined
 
+    const enableStdoutLogCheckbox = document.getElementById('enableStdoutLog');
+    if (enableStdoutLogCheckbox) enableStdoutLogCheckbox.checked = data.enableStdoutLog === true; // Default false if undefined
+
     // Handle create mode vs edit mode
     // Styles handled by CSS now
 
@@ -267,7 +270,8 @@ if (form) {
             siteUrl: document.getElementById('siteUrl').value || undefined,
             username: username,
             password: document.getElementById('password').value || 'KEEP_EXISTING',
-            openBrowserOnDeploy: document.getElementById('openBrowserOnDeploy').checked
+            openBrowserOnDeploy: document.getElementById('openBrowserOnDeploy').checked,
+            enableStdoutLog: document.getElementById('enableStdoutLog').checked
         };
 
         vscode.postMessage({ command: 'save', data: submitData });
@@ -286,6 +290,7 @@ window.resetForm = function () {
     document.getElementById('username').value = data.username || '';
     document.getElementById('password').value = '';
     document.getElementById('openBrowserOnDeploy').checked = data.openBrowserOnDeploy !== false;
+    document.getElementById('enableStdoutLog').checked = data.enableStdoutLog === true;
     clearErrors();
 }
 

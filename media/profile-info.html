@@ -122,6 +122,42 @@
         </div>
       </div>
 
+      <!-- Deployment Options -->
+      <div class="form-group">
+        <label style="font-weight: 600; margin-bottom: 8px; display: block;">Deployment Options</label>
+        <div
+          class="checkbox-container"
+          style="
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+          "
+        >
+          <input
+            type="checkbox"
+            id="enableStdoutLog"
+            style="width: auto; margin: 0; margin-top: 3px;"
+          />
+          <div style="flex: 1;">
+            <label
+              for="enableStdoutLog"
+              style="
+                margin: 0;
+                font-size: 0.9em;
+                font-weight: normal;
+                cursor: pointer;
+                display: block;
+              "
+              >Enable stdout logging (for debugging)</label
+            >
+            <small class="hint" style="margin-top: 4px; display: block;">
+              Enables detailed logging to help troubleshoot startup issues. Logs will be written to .\logs\stdout folder on the IIS server.
+            </small>
+          </div>
+        </div>
+      </div>
+
       <div class="actions">
         <div class="actions-left">
           <button type="submit" class="btn-primary">💾 Save Changes</button>

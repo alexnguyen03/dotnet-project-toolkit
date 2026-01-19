@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { PublishProfileInfo } from '../models/ProjectModels';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
+import { IWebConfigModifier } from './WebConfigModifier';
 
 /**
  * Deployment result
@@ -32,7 +33,8 @@ export interface IDeploymentService {
 export class DeploymentService implements IDeploymentService {
     constructor(
         private readonly outputChannel: vscode.OutputChannel,
-        private readonly passwordStorage: IPasswordStorage
+        private readonly passwordStorage: IPasswordStorage,
+        private readonly webConfigModifier?: IWebConfigModifier
     ) { }
 
     async deploy(
@@ -64,7 +66,26 @@ export class DeploymentService implements IDeploymentService {
 
             // 4. Check result
             if (result.exitCode === 0) {
-                onProgress?.('Deployment complete!', 100);
+                onProgress?.('Deployment complete!', 90);
+                
+                // 5. Modify web.config if stdout logging is enabled
+                if (profileInfo.enableStdoutLog && this.webConfigModifier) {
+                    try {
+                        onProgress?.('Configuring stdout logging...', 95);
+                        await this.webConfigModifier.modifyStdoutLogging(
+                            profileInfo.publishUrl || '',
+                            profileInfo.siteName || '',
+                            profileInfo.userName || '',
+                            password,
+                            true
+                        );
+                    } catch (error: any) {
+                        // Log but don't fail deployment
+                        this.log(`Warning: Could not modify web.config: ${error.message}`);
+                    }
+                }
+                
+                onProgress?.('Complete!', 100);
                 return {
                     success: true,
                     output: result.output

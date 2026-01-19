@@ -42,6 +42,9 @@ export interface PublishProfileInfo {
 
     /** Whether to open browser after deployment */
     openBrowserOnDeploy?: boolean;
+
+    /** Whether to enable stdout logging in web.config after deployment */
+    enableStdoutLog?: boolean;
 }
 
 export interface ProjectInfo {

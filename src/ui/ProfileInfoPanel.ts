@@ -230,7 +230,8 @@ export class ProfileInfoPanel {
             siteName: '',
             siteUrl: '',
             userName: '',
-            openBrowserOnDeploy: true
+            openBrowserOnDeploy: true,
+            enableStdoutLog: false
         };
 
         const instance = new ProfileInfoPanel(
@@ -300,7 +301,8 @@ export class ProfileInfoPanel {
                     siteName: data.siteName,
                     siteUrl: data.siteUrl || '',
                     userName: data.username,
-                    openBrowserOnDeploy: data.openBrowserOnDeploy
+                    openBrowserOnDeploy: data.openBrowserOnDeploy,
+                    enableStdoutLog: data.enableStdoutLog
                 };
 
                 this.panel.title = `${this.currentProjectName} / ${this.currentProfileInfo.fileName}`;
@@ -337,6 +339,7 @@ export class ProfileInfoPanel {
             siteUrl: profile.siteUrl,
             username: profile.userName,
             openBrowserOnDeploy: profile.openBrowserOnDeploy,
+            enableStdoutLog: profile.enableStdoutLog,
             passwordKey: passwordKey,
             isDeploying: this._isDeploying || this.isDeploying(profile.fileName),
             isCreateMode: this.isCreateMode
