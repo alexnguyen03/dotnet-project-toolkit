@@ -3,6 +3,7 @@ import { ICommand } from './ICommand';
 import { PublishTreeItem } from '../ui/publish/PublishTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
 import { PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
+import { IDeploymentService } from '../services/DeploymentService';
 
 /**
  * Deploy Profile Command
@@ -14,10 +15,27 @@ export class DeployProfileCommand implements ICommand {
     constructor(
         private readonly outputChannel: vscode.OutputChannel,
         private readonly onRefresh: () => void,
-        private readonly historyManager: HistoryManager
+        private readonly historyManager: HistoryManager,
+        private readonly deploymentService: IDeploymentService
     ) { }
 
     async execute(item: PublishTreeItem): Promise<void> {
+        // Debug: Log what we received
+        this.outputChannel.appendLine('=== DeployProfileCommand.execute ===');
+        this.outputChannel.appendLine(`[Deploy] Received item type: ${item?.constructor?.name || 'unknown'}`);
+        this.outputChannel.appendLine(`[Deploy] item.contextValue: ${item?.contextValue}`);
+        this.outputChannel.appendLine(`[Deploy] item.label: ${item?.label}`);
+        this.outputChannel.appendLine(`[Deploy] item.projectName: ${item?.projectName}`);
+        this.outputChannel.appendLine(`[Deploy] item.projectInfo: ${!!item?.projectInfo}`);
+        this.outputChannel.appendLine(`[Deploy] item.profileInfo: ${!!item?.profileInfo}`);
+        this.outputChannel.appendLine(`[Deploy] item.csprojPath: ${item?.csprojPath || 'undefined'}`);
+        this.outputChannel.appendLine(`[Deploy] item.projectPath (getter): ${item?.projectPath || 'undefined'}`);
+        
+        // Log all properties
+        if (item) {
+            this.outputChannel.appendLine(`[Deploy] All item properties: ${JSON.stringify(Object.keys(item))}`);
+        }
+        
         if (!item || !item.profileInfo) {
             vscode.window.showErrorMessage('No publish profile selected');
             return;
@@ -26,6 +44,39 @@ export class DeployProfileCommand implements ICommand {
         const profile = item.profileInfo;
         const projectName = item.projectName || 'Unknown Project';
         const environment = profile.environment.toUpperCase();
+
+        // CRITICAL FIX: VS Code serializes tree items, losing csprojPath
+        // Derive csproj path from pubxml path
+        // pubxml: D:\...\Properties\PublishProfiles\staging.pubxml
+        // csproj: D:\...\ProjectName.csproj
+        let projectPath = item.projectPath || item.csprojPath;
+        
+        if (!projectPath && profile.path) {
+            // Extract from pubxml path
+            // Remove: \Properties\PublishProfiles\{profile}.pubxml
+            const pubxmlPath = profile.path;
+            const projectDir = pubxmlPath.replace(/[\\\/]Properties[\\\/]PublishProfiles[\\\/][^\\\/]+\.pubxml$/i, '');
+            
+            // Try to find .csproj in project directory
+            const fs = require('fs');
+            const path = require('path');
+            
+            try {
+                if (fs.existsSync(projectDir)) {
+                    const files = fs.readdirSync(projectDir);
+                    const csprojFile = files.find((f: string) => f.endsWith('.csproj'));
+                    
+                    if (csprojFile) {
+                        projectPath = path.join(projectDir, csprojFile);
+                        this.outputChannel.appendLine(`[Deploy] Derived project path from pubxml: ${projectPath}`);
+                    }
+                }
+            } catch (error) {
+                this.outputChannel.appendLine(`[Deploy] Error deriving project path: ${error}`);
+            }
+        }
+        
+        this.outputChannel.appendLine(`[Deploy] Final project path: ${projectPath || 'NOT FOUND'}`);
 
         // 1. Confirm deployment (for ALL environments)
         const isProd = profile.environment === DeployEnvironment.Production;
@@ -57,27 +108,41 @@ export class DeployProfileCommand implements ICommand {
         // Refresh views to show in-progress
         this.onRefresh();
 
-        // 3. Start mock deployment process
+        // 3. Start real deployment process
         try {
+            let deploymentResult: any;
+
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: `Deploying ${profile.name}...`,
                 cancellable: false
             }, async (progress) => {
                 this.outputChannel.appendLine(`[Deploy] Starting deployment for ${profile.name} (${environment})`);
+                this.outputChannel.appendLine(`[Deploy] Project: ${projectName}`);
+                this.outputChannel.appendLine(`[Deploy] Profile Path: ${profile.path}`);
+                this.outputChannel.appendLine(`[Deploy] Using Project Path: ${projectPath || 'NOT FOUND'}`);
+                
+                if (!projectPath) {
+                    throw new Error('Project path not found. Cannot deploy without .csproj path.');
+                }
+                
                 this.outputChannel.show();
 
-                progress.report({ message: 'Validating environment...', increment: 0 });
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                progress.report({ message: 'Building project...', increment: 30 });
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                progress.report({ message: 'Publishing to IIS...', increment: 60 });
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                progress.report({ message: 'Deployment complete!', increment: 100 });
+                // Execute real deployment
+                deploymentResult = await this.deploymentService.deploy(
+                    projectPath,
+                    projectName,
+                    profile,
+                    (message, increment) => {
+                        progress.report({ message, increment });
+                    }
+                );
             });
+
+            // Check deployment result
+            if (!deploymentResult.success) {
+                throw new Error(deploymentResult.errorMessage || 'Deployment failed');
+            }
 
             // 4. Update history with success
             const endTime = new Date();

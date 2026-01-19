@@ -3,6 +3,7 @@ import { IPasswordStorage } from '../strategies/IPasswordStorage';
 import { EnvVarPasswordStorage } from '../strategies/EnvVarPasswordStorage';
 import { SecretPasswordStorage } from '../strategies/SecretPasswordStorage';
 import { IProfileService, ProfileService } from '../services/ProfileService';
+import { IDeploymentService, DeploymentService } from '../services/DeploymentService';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { DeployProfileCommand } from '../commands/DeployProfileCommand';
 import { CreateProfileCommand } from '../commands/CreateProfileCommand';
@@ -31,6 +32,7 @@ export class ServiceContainer {
     readonly outputChannel: vscode.OutputChannel;
     readonly passwordStorage: IPasswordStorage;
     readonly profileService: IProfileService;
+    readonly deploymentService: IDeploymentService;
     readonly treeProvider: UnifiedTreeProvider;
     readonly historyProvider: HistoryTreeProvider;
     readonly historyManager: HistoryManager;
@@ -51,17 +53,19 @@ export class ServiceContainer {
         // Get workspace root
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
 
-        // Create password storage (use EnvVar by default, can be configured)
-        const storageType = vscode.workspace.getConfiguration('dotnetToolkit').get<string>('passwordStorage', 'envvar');
+        // Create password storage (use SecretStorage by default for security)
+        const storageType = vscode.workspace.getConfiguration('dotnetToolkit').get<string>('passwordStorage', 'secret');
 
-        if (storageType === 'secret') {
-            this.passwordStorage = new SecretPasswordStorage(this.outputChannel, context.secrets);
-        } else {
+        if (storageType === 'envvar') {
             this.passwordStorage = new EnvVarPasswordStorage(this.outputChannel);
+        } else {
+            // Default to SecretStorage (encrypted, secure)
+            this.passwordStorage = new SecretPasswordStorage(this.outputChannel, context.secrets);
         }
 
         // Create services
         this.profileService = new ProfileService(this.outputChannel, this.passwordStorage);
+        this.deploymentService = new DeploymentService(this.outputChannel, this.passwordStorage);
         this.historyManager = new HistoryManager(context);
         this.projectScanner = new ProjectScanner();
         this.watchConfigService = new WatchConfigService(context);
@@ -115,7 +119,7 @@ export class ServiceContainer {
         // Register commands
         container.commandRegistry.registerAll([
             new RefreshCommand(container.outputChannel, onRefresh),
-            new DeployProfileCommand(container.outputChannel, onRefresh, container.historyManager),
+            new DeployProfileCommand(container.outputChannel, onRefresh, container.historyManager, container.deploymentService),
             new CreateProfileCommand(container.outputChannel, container.profileService, onRefresh),
             new DeleteProfileCommand(container.outputChannel, container.profileService, container.passwordStorage, onRefresh),
             new EditProfileCommand(container.outputChannel, container.profileService, onRefresh),

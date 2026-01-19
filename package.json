@@ -3,10 +3,10 @@
   "displayName": ".NET Project Toolkit",
   "description": "All-in-one project toolkit for .NET developers - deployment, watch, and debug management",
   "version": "0.1.1",
-  "publisher": "yourpublisher",
+  "publisher": "alexnguyen03",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourpublisher/dotnet-project-toolkit"
+    "url": "https://github.com/alexnguyen03/dotnet-project-toolkit"
   },
   "engines": {
     "vscode": "^1.95.0"
@@ -445,6 +445,16 @@
           "type": "string",
           "default": "dotnet",
           "description": "Path to dotnet CLI executable"
+        },
+        "dotnetToolkit.passwordStorage": {
+          "type": "string",
+          "enum": ["secret", "envvar"],
+          "enumDescriptions": [
+            "Secure: Store passwords encrypted in OS keychain (Windows Credential Manager, macOS Keychain, Linux Secret Service)",
+            "Environment Variables: Store passwords in system environment variables (less secure, plain text)"
+          ],
+          "default": "secret",
+          "description": "Password storage method for deployment credentials"
         },
         "dotnetToolkit.deploymentTimeout": {
           "type": "number",

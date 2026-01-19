@@ -90,17 +90,23 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 			}
 
 			// Show publish profiles
-			return project.profiles.map(profile =>
-				new PublishTreeItem(
-					profile.name,
-					vscode.TreeItemCollapsibleState.None,
-					'publishProfile',
-					undefined,
-					undefined,
-					profile,
-					project.name // Pass project name for password var naming
-				)
+		console.log('[PublishTreeProvider] Creating profile items for project:', project.name);
+		console.log('[PublishTreeProvider] Project csprojPath:', project.csprojPath);
+		console.log('[PublishTreeProvider] Number of profiles:', project.profiles.length);
+		
+		return project.profiles.map(profile => {
+			const item = new PublishTreeItem(
+				profile.name,
+				vscode.TreeItemCollapsibleState.None,
+				'publishProfile',
+				project, // Pass project info for deployment
+				undefined,
+				profile,
+				project.name // Pass project name for password var naming
 			);
+			console.log('[PublishTreeProvider] Created item for profile:', profile.name, 'has projectInfo:', !!item.projectInfo);
+			return item;
+		});
 		}
 
 		return [];
@@ -111,6 +117,13 @@ export class PublishTreeItem extends vscode.TreeItem {
 	public readonly projectInfo?: ProjectInfo;
 	public readonly profileInfo?: PublishProfileInfo;
 	public readonly projectName?: string;
+	public readonly csprojPath?: string; // Store directly for serialization
+
+	/** Get the .csproj path for deployment */
+	get projectPath(): string | undefined {
+		// Prefer direct csprojPath (survives serialization)
+		return this.csprojPath || this.projectInfo?.csprojPath;
+	}
 
 	constructor(
 		public readonly label: string,
@@ -122,9 +135,29 @@ export class PublishTreeItem extends vscode.TreeItem {
 		projectName?: string
 	) {
 		super(label, collapsibleState);
+		
+		// Debug logging
+		if (contextValue === 'publishProfile') {
+			console.log('[PublishTreeItem.constructor] Creating profile item:', label);
+			console.log('[PublishTreeItem.constructor] Received projectInfo:', !!projectInfo);
+			console.log('[PublishTreeItem.constructor] projectInfo.csprojPath:', projectInfo?.csprojPath);
+		}
+		
 		this.projectInfo = projectInfo;
 		this.profileInfo = profileInfo;
 		this.projectName = projectName;
+		
+		// CRITICAL: Store csprojPath directly to survive VS Code serialization
+		// VS Code may serialize/deserialize tree items, losing complex objects
+		this.csprojPath = projectInfo?.csprojPath;
+		
+		// Verify assignment
+		if (contextValue === 'publishProfile') {
+			console.log('[PublishTreeItem.constructor] After assignment - this.projectInfo:', !!this.projectInfo);
+			console.log('[PublishTreeItem.constructor] After assignment - this.csprojPath:', this.csprojPath);
+			console.log('[PublishTreeItem.constructor] After assignment - this.projectPath:', this.projectPath);
+		}
+		
 		if (description) {
 			this.description = description;
 		}

@@ -25,9 +25,15 @@ export class ProfileInfoCommand extends BaseCommand {
     }
 
     async execute(item?: unknown): Promise<void> {
-        const treeItem = item as { profileInfo?: PublishProfileInfo; projectName?: string };
+        const treeItem = item as { 
+            profileInfo?: PublishProfileInfo; 
+            projectName?: string;
+            projectPath?: string;
+            csprojPath?: string;
+        };
         const profileInfo = treeItem?.profileInfo;
         const projectName = treeItem?.projectName || 'Project';
+        const projectPath = treeItem?.projectPath || treeItem?.csprojPath;
 
         if (!profileInfo) {
             vscode.window.showErrorMessage('No profile information available');
@@ -35,6 +41,9 @@ export class ProfileInfoCommand extends BaseCommand {
         }
 
         this.log(`Opening info panel: ${profileInfo.fileName}`);
+        this.log(`Project: ${projectName}`);
+        this.log(`Deployment Project Path: ${projectPath || 'NOT FOUND'}`);
+        this.log(`Profile Path: ${profileInfo.path}`);
 
         ProfileInfoPanel.show(
             this.extensionUri,

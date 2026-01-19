@@ -94,32 +94,47 @@ The Publish view displays your solution structure with all available publish pro
 
 ## ⚙️ Configuration
 
-### Environment Variables
+### 🔐 Password Storage (Credentials)
 
-The extension uses OS environment variables for deployment authentication:
+The extension uses **VS Code SecretStorage** by default to store deployment credentials securely:
 
-#### Windows (PowerShell):
+- **Windows**: Encrypted in Windows Credential Manager
+- **macOS**: Encrypted in Keychain
+- **Linux**: Encrypted in Secret Service API
 
-```powershell
-[System.Environment]::SetEnvironmentVariable("DEPLOY_PWD", "your_uat_password", "User")
-[System.Environment]::SetEnvironmentVariable("DEPLOY_PWD_PROD", "your_prod_password", "User")
+**How to configure credentials:**
+
+1. Click on a publish profile in the TreeView
+2. Click "Edit" in the Profile Info panel
+3. Enter your deployment password
+4. Click "Save"
+
+Passwords are automatically encrypted and stored securely. No manual environment variable setup required!
+
+**Alternative: Environment Variables**
+
+If you prefer to use environment variables (less secure, plain text):
+
+```json
+// .vscode/settings.json
+{
+  "dotnetToolkit.passwordStorage": "envvar"
+}
 ```
 
-#### Linux/macOS (Bash/Zsh):
-
-```bash
-export DEPLOY_PWD="your_uat_password"
-export DEPLOY_PWD_PROD="your_prod_password"
-```
+📖 **See [PASSWORD_STORAGE.md](PASSWORD_STORAGE.md) for detailed information on password storage options.**
 
 ### Extension Settings
 
 This extension contributes the following settings:
 
+- `dotnetToolkit.passwordStorage`: Password storage method - `secret` (default, encrypted) or `envvar` (plain text)
 - `dotnetToolkit.dotnetPath`: Path to dotnet CLI executable (default: `dotnet`)
 - `dotnetToolkit.deploymentTimeout`: Deployment timeout in seconds (default: `300`)
 - `dotnetToolkit.showNotifications`: Show deployment notifications (default: `true`)
 - `dotnetToolkit.confirmProductionDeploy`: Confirm before deploying to production (default: `true`)
+- `dotnetToolkit.historyMaxEntries`: Maximum deployment history entries (default: `50`)
+- `dotnetToolkit.historyGroupByDate`: Group history by date (default: `true`)
 
 ---
 
