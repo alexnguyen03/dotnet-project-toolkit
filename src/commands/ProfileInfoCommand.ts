@@ -11,49 +11,49 @@ import { ProfileInfoPanel } from '../ui/ProfileInfoPanel';
  * Opens a Webview panel showing profile details with edit capability
  */
 export class ProfileInfoCommand extends BaseCommand {
-    readonly id = 'dotnet-project-toolkit.profileInfo';
+	readonly id = 'dotnet-project-toolkit.profileInfo';
 
-    constructor(
-        outputChannel: vscode.OutputChannel,
-        private readonly extensionUri: vscode.Uri,
-        private readonly profileService: IProfileService,
-        private readonly passwordStorage: IPasswordStorage,
-        private readonly historyManager: HistoryManager,
-        private readonly onRefresh: () => void
-    ) {
-        super(outputChannel);
-    }
+	constructor(
+		outputChannel: vscode.OutputChannel,
+		private readonly extensionUri: vscode.Uri,
+		private readonly profileService: IProfileService,
+		private readonly passwordStorage: IPasswordStorage,
+		private readonly historyManager: HistoryManager,
+		private readonly onRefresh: () => void
+	) {
+		super(outputChannel);
+	}
 
-    async execute(item?: unknown): Promise<void> {
-        const treeItem = item as { 
-            profileInfo?: PublishProfileInfo; 
-            projectName?: string;
-            projectPath?: string;
-            csprojPath?: string;
-        };
-        const profileInfo = treeItem?.profileInfo;
-        const projectName = treeItem?.projectName || 'Project';
-        const projectPath = treeItem?.projectPath || treeItem?.csprojPath;
+	async execute(item?: unknown): Promise<void> {
+		const treeItem = item as {
+			profileInfo?: PublishProfileInfo;
+			projectName?: string;
+			projectPath?: string;
+			csprojPath?: string;
+		};
+		const profileInfo = treeItem?.profileInfo;
+		const projectName = treeItem?.projectName || 'Project';
+		const projectPath = treeItem?.projectPath || treeItem?.csprojPath;
 
-        if (!profileInfo) {
-            vscode.window.showErrorMessage('No profile information available');
-            return;
-        }
+		if (!profileInfo) {
+			vscode.window.showErrorMessage('No profile information available');
+			return;
+		}
 
-        this.log(`Opening info panel: ${profileInfo.fileName}`);
-        this.log(`Project: ${projectName}`);
-        this.log(`Deployment Project Path: ${projectPath || 'NOT FOUND'}`);
-        this.log(`Profile Path: ${profileInfo.path}`);
+		this.log(`Opening info panel: ${profileInfo.fileName}`);
+		this.log(`Project: ${projectName}`);
+		this.log(`Deployment Project Path: ${projectPath || 'NOT FOUND'}`);
+		this.log(`Profile Path: ${profileInfo.path}`);
 
-        ProfileInfoPanel.show(
-            this.extensionUri,
-            profileInfo,
-            projectName,
-            this.profileService,
-            this.passwordStorage,
-            this.historyManager,
-            this.outputChannel,
-            this.onRefresh
-        );
-    }
+		ProfileInfoPanel.show(
+			this.extensionUri,
+			profileInfo,
+			projectName,
+			this.profileService,
+			this.passwordStorage,
+			this.historyManager,
+			this.outputChannel,
+			this.onRefresh
+		);
+	}
 }

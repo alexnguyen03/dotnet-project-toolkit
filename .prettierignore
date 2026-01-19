@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+*.vsix
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode-test/
+.vscode-test.mjs
+
+# Git
+.git/
+
+# Documentation
+CHANGELOG.md
+LICENSE
+
+# Generated files
+package-lock.json

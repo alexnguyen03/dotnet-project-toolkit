@@ -4,18 +4,23 @@
  * Follows Single Responsibility Principle
  */
 export interface IConfigurationService {
-    /**
-     * Get password storage type (envvar, secret, keychain)
-     */
-    getPasswordStorageType(): string;
+	/**
+	 * Get password storage type (secret, envvar)
+	 */
+	getPasswordStorageType(): string;
 
-    /**
-     * Get maximum number of history entries to keep
-     */
-    getHistoryMaxEntries(): number;
+	/**
+	 * Get path to dotnet CLI executable
+	 */
+	getDotnetPath(): string;
 
-    /**
-     * Get workspace root path
-     */
-    getWorkspaceRoot(): string | undefined;
+	/**
+	 * Should browser be opened after deployment
+	 */
+	getOpenBrowserOnDeploy(): boolean;
+
+	/**
+	 * Get workspace root path
+	 */
+	getWorkspaceRoot(): string | undefined;
 }

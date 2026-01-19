@@ -6,17 +6,28 @@ import { IConfigurationService } from './IConfigurationService';
  * Wraps VS Code workspace configuration
  */
 export class ConfigurationService implements IConfigurationService {
-    private readonly configSection = 'dotnetToolkit';
+	private readonly configSection = 'dotnetToolkit';
+	private readonly workspaceSection = 'dotnetWorkspace';
 
-    getPasswordStorageType(): string {
-        return vscode.workspace.getConfiguration(this.configSection).get<string>('passwordStorage', 'secret');
-    }
+	getPasswordStorageType(): string {
+		return vscode.workspace
+			.getConfiguration(this.configSection)
+			.get<string>('passwordStorage', 'secret');
+	}
 
-    getHistoryMaxEntries(): number {
-        return vscode.workspace.getConfiguration(this.configSection).get<number>('historyMaxEntries', 50);
-    }
+	getDotnetPath(): string {
+		return vscode.workspace
+			.getConfiguration(this.workspaceSection)
+			.get<string>('dotnetPath', 'dotnet');
+	}
 
-    getWorkspaceRoot(): string | undefined {
-        return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    }
+	getOpenBrowserOnDeploy(): boolean {
+		return vscode.workspace
+			.getConfiguration(this.configSection)
+			.get<boolean>('openBrowserOnDeploy', true);
+	}
+
+	getWorkspaceRoot(): string | undefined {
+		return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+	}
 }

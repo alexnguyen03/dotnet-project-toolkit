@@ -3,12 +3,12 @@
  */
 
 export interface DebugGroup {
-    /** Unique name for the debug group */
-    name: string;
+	/** Unique name for the debug group */
+	name: string;
 
-    /** List of project names to debug together */
-    projects: string[];
+	/** List of project names to debug together */
+	projects: string[];
 
-    /** Optional launch settings/arguments */
-    launchSettings?: string;
+	/** Optional launch settings/arguments */
+	launchSettings?: string;
 }

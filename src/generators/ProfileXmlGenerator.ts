@@ -8,28 +8,29 @@ import { GuidGenerator } from '../utils/GuidGenerator';
  * Follows Single Responsibility Principle
  */
 export interface IProfileXmlGenerator {
-    /**
-     * Generate .pubxml XML content
-     */
-    generate(data: ProfileWizardData, targetFramework: string): string;
+	/**
+	 * Generate .pubxml XML content
+	 */
+	generate(data: ProfileWizardData, targetFramework: string): string;
 }
 
 /**
  * Profile XML Generator Implementation
  */
 export class ProfileXmlGenerator implements IProfileXmlGenerator {
-    generate(data: ProfileWizardData, targetFramework: string): string {
-        const siteUrl = data.siteUrl || `https://${data.publishUrl}`;
-        const guid = GuidGenerator.generate();
-        const envName = this.mapEnvironmentName(data.environment);
+	generate(data: ProfileWizardData, targetFramework: string): string {
+		const siteUrl = data.siteUrl || `https://${data.publishUrl}`;
+		const guid = GuidGenerator.generate();
+		const envName = this.mapEnvironmentName(data.environment);
 
-        return `<?xml version="1.0" encoding="utf-8"?>
+		return `<?xml version="1.0" encoding="utf-8"?>
 <!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
 <Project>
   <PropertyGroup>
     <WebPublishMethod>MSDeploy</WebPublishMethod>
     <LaunchSiteAfterPublish>${data.openBrowserOnDeploy !== false}</LaunchSiteAfterPublish>
     <EnableStdoutLog>${data.enableStdoutLog === true}</EnableStdoutLog>
+    <LogPath>${data.logPath || ''}</LogPath>
     <LastUsedBuildConfiguration>Release</LastUsedBuildConfiguration>
     <LastUsedPlatform>Any CPU</LastUsedPlatform>
     <SiteUrlToLaunchAfterPublish>${siteUrl}</SiteUrlToLaunchAfterPublish>
@@ -51,18 +52,18 @@ export class ProfileXmlGenerator implements IProfileXmlGenerator {
   </PropertyGroup>
 </Project>
 `;
-    }
+	}
 
-    private mapEnvironmentName(environment: DeployEnvironment): string {
-        switch (environment) {
-            case DeployEnvironment.Production:
-                return 'Production';
-            case DeployEnvironment.Staging:
-                return 'Staging';
-            case DeployEnvironment.Development:
-                return 'Development';
-            default:
-                return 'Development';
-        }
-    }
+	private mapEnvironmentName(environment: DeployEnvironment): string {
+		switch (environment) {
+			case DeployEnvironment.Production:
+				return 'Production';
+			case DeployEnvironment.Staging:
+				return 'Staging';
+			case DeployEnvironment.Development:
+				return 'Development';
+			default:
+				return 'Development';
+		}
+	}
 }

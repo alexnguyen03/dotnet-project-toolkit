@@ -4,159 +4,168 @@ import * as path from 'path';
 import { DeploymentRecord } from '../models/DeploymentRecord';
 
 interface HistoryFileContent {
-    version: number;
-    records: DeploymentRecord[];
+	version: number;
+	records: DeploymentRecord[];
 }
 
 export class HistoryManager {
-    private historyCache: DeploymentRecord[] = [];
-    private readonly STORAGE_FILE = 'deployment-history.json';
-    private readonly CURRENT_VERSION = 1;
+	private historyCache: DeploymentRecord[] = [];
+	private readonly STORAGE_FILE = 'deployment-history.json';
+	private readonly CURRENT_VERSION = 1;
 
-    constructor(private readonly context: vscode.ExtensionContext) {
-        // Initial load
-        this.refreshHistory();
-    }
+	constructor(private readonly context: vscode.ExtensionContext) {
+		// Initial load
+		this.refreshHistory();
+	}
 
-    /**
-     * Add a new deployment record to history
-     */
-    async addDeployment(record: Omit<DeploymentRecord, 'id'>, profilePath: string): Promise<string> {
-        const id = Math.random().toString(36).substring(2, 9);
-        const newRecord: DeploymentRecord = { ...record, id };
+	/**
+	 * Add a new deployment record to history
+	 */
+	async addDeployment(
+		record: Omit<DeploymentRecord, 'id'>,
+		profilePath: string
+	): Promise<string> {
+		const id = Math.random().toString(36).substring(2, 9);
+		const newRecord: DeploymentRecord = { ...record, id };
 
-        // 1. Read existing
-        await this.loadFromStorage();
-        
-        // 2. Add new record
-        this.historyCache.unshift(newRecord);
+		// 1. Read existing
+		await this.loadFromStorage();
 
-        // 3. Prune if needed
-        const maxEntries = vscode.workspace.getConfiguration('dotnetToolkit').get<number>('historyMaxEntries', 50);
-        if (this.historyCache.length > maxEntries) {
-            this.historyCache = this.historyCache.slice(0, maxEntries);
-        }
+		// 2. Add new record
+		this.historyCache.unshift(newRecord);
 
-        // 4. Save
-        await this.saveToStorage();
+		// 3. Prune if needed
+		const maxEntries = 50; // Hardcoded limit since configuration was removed
+		if (this.historyCache.length > maxEntries) {
+			this.historyCache = this.historyCache.slice(0, maxEntries);
+		}
 
-        return id;
-    }
+		// 4. Save
+		await this.saveToStorage();
 
-    /**
-     * Update an existing deployment record
-     */
-    async updateDeployment(id: string, updates: Partial<DeploymentRecord>, profilePath: string): Promise<void> {
-        await this.loadFromStorage();
+		return id;
+	}
 
-        const index = this.historyCache.findIndex(r => r.id === id);
-        if (index !== -1) {
-            this.historyCache[index] = { ...this.historyCache[index], ...updates };
-            await this.saveToStorage();
-        }
-    }
+	/**
+	 * Update an existing deployment record
+	 */
+	async updateDeployment(
+		id: string,
+		updates: Partial<DeploymentRecord>,
+		profilePath: string
+	): Promise<void> {
+		await this.loadFromStorage();
 
-    /**
-     * Get all deployment records from cache
-     */
-    getAllHistory(): DeploymentRecord[] {
-        return this.historyCache;
-    }
+		const index = this.historyCache.findIndex((r) => r.id === id);
+		if (index !== -1) {
+			this.historyCache[index] = { ...this.historyCache[index], ...updates };
+			await this.saveToStorage();
+		}
+	}
 
-    /**
-     * Get history count
-     */
-    getHistoryCount(): number {
-        return this.historyCache.length;
-    }
+	/**
+	 * Get all deployment records from cache
+	 */
+	getAllHistory(): DeploymentRecord[] {
+		return this.historyCache;
+	}
 
-    /**
-     * Clear all history
-     */
-    async clearHistory(): Promise<void> {
-        this.historyCache = [];
-        await this.saveToStorage();
-    }
+	/**
+	 * Get history count
+	 */
+	getHistoryCount(): number {
+		return this.historyCache.length;
+	}
 
-    /**
-     * Remove a single entry by ID
-     */
-    async clearEntry(id: string): Promise<void> {
-        await this.loadFromStorage();
-        const index = this.historyCache.findIndex(r => r.id === id);
-        if (index !== -1) {
-            this.historyCache.splice(index, 1);
-            await this.saveToStorage();
-        }
-    }
+	/**
+	 * Clear all history
+	 */
+	async clearHistory(): Promise<void> {
+		this.historyCache = [];
+		await this.saveToStorage();
+	}
 
-    /**
-     * Refresh the in-memory cache
-     */
-    async refreshHistory(): Promise<void> {
-        await this.loadFromStorage();
-    }
+	/**
+	 * Remove a single entry by ID
+	 */
+	async clearEntry(id: string): Promise<void> {
+		await this.loadFromStorage();
+		const index = this.historyCache.findIndex((r) => r.id === id);
+		if (index !== -1) {
+			this.historyCache.splice(index, 1);
+			await this.saveToStorage();
+		}
+	}
 
-    private async ensureStorageDir(): Promise<void> {
-        if (this.context.storageUri) {
-            try {
-                await fs.promises.mkdir(this.context.storageUri.fsPath, { recursive: true });
-            } catch (error) {
-                // Ignore if exists
-            }
-        }
-    }
+	/**
+	 * Refresh the in-memory cache
+	 */
+	async refreshHistory(): Promise<void> {
+		await this.loadFromStorage();
+	}
 
-    private getHistoryFilePath(): string | undefined {
-        if (!this.context.storageUri) {
-            return undefined;
-        }
-        return path.join(this.context.storageUri.fsPath, this.STORAGE_FILE);
-    }
+	private async ensureStorageDir(): Promise<void> {
+		if (this.context.storageUri) {
+			try {
+				await fs.promises.mkdir(this.context.storageUri.fsPath, { recursive: true });
+			} catch (error) {
+				// Ignore if exists
+			}
+		}
+	}
 
-    private async loadFromStorage(): Promise<void> {
-        const filePath = this.getHistoryFilePath();
-        if (!filePath || !fs.existsSync(filePath)) {
-            this.historyCache = [];
-            return;
-        }
+	private getHistoryFilePath(): string | undefined {
+		if (!this.context.storageUri) {
+			return undefined;
+		}
+		return path.join(this.context.storageUri.fsPath, this.STORAGE_FILE);
+	}
 
-        try {
-            const content = await fs.promises.readFile(filePath, 'utf-8');
-            const data = JSON.parse(content) as HistoryFileContent;
-            
-            // Handle migration if we change version later
-            if (data && Array.isArray(data.records)) {
-                this.historyCache = data.records;
-            } else {
-                this.historyCache = [];
-            }
+	private async loadFromStorage(): Promise<void> {
+		const filePath = this.getHistoryFilePath();
+		if (!filePath || !fs.existsSync(filePath)) {
+			this.historyCache = [];
+			return;
+		}
 
-            // Sort by startTime descending
-            this.historyCache.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-        } catch (error) {
-            console.error('Failed to load history:', error);
-            this.historyCache = [];
-        }
-    }
+		try {
+			const content = await fs.promises.readFile(filePath, 'utf-8');
+			const data = JSON.parse(content) as HistoryFileContent;
 
-    private async saveToStorage(): Promise<void> {
-        const filePath = this.getHistoryFilePath();
-        if (!filePath) {
-            return;
-        }
+			// Handle migration if we change version later
+			if (data && Array.isArray(data.records)) {
+				this.historyCache = data.records;
+			} else {
+				this.historyCache = [];
+			}
 
-        await this.ensureStorageDir();
+			// Sort by startTime descending
+			this.historyCache.sort(
+				(a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+			);
+		} catch (error) {
+			console.error('Failed to load history:', error);
+			this.historyCache = [];
+		}
+	}
 
-        const data: HistoryFileContent = {
-            version: this.CURRENT_VERSION,
-            records: this.historyCache
-        };
+	private async saveToStorage(): Promise<void> {
+		const filePath = this.getHistoryFilePath();
+		if (!filePath) {
+			return;
+		}
 
-        try {
-            await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
-        } catch (error) {
-            console.error('Failed to save history:', error);
-        }
-    }
+		await this.ensureStorageDir();
+
+		const data: HistoryFileContent = {
+			version: this.CURRENT_VERSION,
+			records: this.historyCache,
+		};
+
+		try {
+			await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+		} catch (error) {
+			console.error('Failed to save history:', error);
+		}
+	}
 }

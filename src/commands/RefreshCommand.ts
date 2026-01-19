@@ -6,17 +6,17 @@ import { BaseCommand } from './ICommand';
  * Refreshes all tree views
  */
 export class RefreshCommand extends BaseCommand {
-    readonly id = 'dotnet-project-toolkit.refreshProfiles';
+	readonly id = 'dotnet-project-toolkit.refreshProfiles';
 
-    constructor(
-        outputChannel: vscode.OutputChannel,
-        private readonly onRefresh: () => void
-    ) {
-        super(outputChannel);
-    }
+	constructor(
+		outputChannel: vscode.OutputChannel,
+		private readonly onRefresh: () => void
+	) {
+		super(outputChannel);
+	}
 
-    async execute(): Promise<void> {
-        this.onRefresh();
-        this.log('All views refreshed');
-    }
+	async execute(): Promise<void> {
+		this.onRefresh();
+		this.log('All views refreshed');
+	}
 }

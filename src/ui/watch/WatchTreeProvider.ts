@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 
 export class WatchTreeProvider implements vscode.TreeDataProvider<WatchTreeItem> {
-	private _onDidChangeTreeData: vscode.EventEmitter<WatchTreeItem | undefined | null | void> = new vscode.EventEmitter<WatchTreeItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<WatchTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+	private _onDidChangeTreeData: vscode.EventEmitter<WatchTreeItem | undefined | null | void> =
+		new vscode.EventEmitter<WatchTreeItem | undefined | null | void>();
+	readonly onDidChangeTreeData: vscode.Event<WatchTreeItem | undefined | null | void> =
+		this._onDidChangeTreeData.event;
 
 	refresh(): void {
 		this._onDidChangeTreeData.fire();
@@ -20,7 +22,7 @@ export class WatchTreeProvider implements vscode.TreeDataProvider<WatchTreeItem>
 					'⚡ Watch Feature',
 					vscode.TreeItemCollapsibleState.Expanded,
 					'info'
-				)
+				),
 			];
 		}
 
@@ -31,11 +33,7 @@ export class WatchTreeProvider implements vscode.TreeDataProvider<WatchTreeItem>
 					vscode.TreeItemCollapsibleState.None,
 					'message'
 				),
-				new WatchTreeItem(
-					'',
-					vscode.TreeItemCollapsibleState.None,
-					'empty'
-				),
+				new WatchTreeItem('', vscode.TreeItemCollapsibleState.None, 'empty'),
 				new WatchTreeItem(
 					'This view will allow you to:',
 					vscode.TreeItemCollapsibleState.None,

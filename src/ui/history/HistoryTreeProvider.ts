@@ -3,10 +3,12 @@ import { HistoryManager } from '../../services/HistoryManager';
 import { DeploymentRecord, DeploymentRecordHelper } from '../../models/DeploymentRecord';
 
 export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeItem> {
-	private _onDidChangeTreeData: vscode.EventEmitter<HistoryTreeItem | undefined | null | void> = new vscode.EventEmitter<HistoryTreeItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<HistoryTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+	private _onDidChangeTreeData: vscode.EventEmitter<HistoryTreeItem | undefined | null | void> =
+		new vscode.EventEmitter<HistoryTreeItem | undefined | null | void>();
+	readonly onDidChangeTreeData: vscode.Event<HistoryTreeItem | undefined | null | void> =
+		this._onDidChangeTreeData.event;
 
-	constructor(private readonly historyManager: HistoryManager) { }
+	constructor(private readonly historyManager: HistoryManager) {}
 
 	refresh(): void {
 		this._onDidChangeTreeData.fire();
@@ -27,26 +29,27 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeI
 						'No deployment history yet',
 						vscode.TreeItemCollapsibleState.None,
 						'empty'
-					)
+					),
 				];
 			}
 
 			// Group by Project
 			const groups = this.groupByProject(history);
-			return Object.entries(groups).map(([groupName, records]) =>
-				new HistoryTreeItem(
-					`${groupName} (${records.length})`,
-					vscode.TreeItemCollapsibleState.Expanded,
-					'projectGroup',
-					undefined,
-					records
-				)
+			return Object.entries(groups).map(
+				([groupName, records]) =>
+					new HistoryTreeItem(
+						`${groupName} (${records.length})`,
+						vscode.TreeItemCollapsibleState.Expanded,
+						'projectGroup',
+						undefined,
+						records
+					)
 			);
 		}
 
 		if (element.contextValue === 'projectGroup' && element.records) {
 			// Show deployments in this project group
-			return element.records.map(record => this.createDeploymentItem(record));
+			return element.records.map((record) => this.createDeploymentItem(record));
 		}
 
 		if (element.contextValue === 'deployment' && element.record) {
@@ -69,15 +72,18 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeI
 		}
 
 		// Sort groups by key (project name)
-		return Object.fromEntries(
-			Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
-		);
+		return Object.fromEntries(Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)));
 	}
 
 	private createDeploymentItem(record: DeploymentRecord): HistoryTreeItem {
 		const statusIcon = this.getStatusIcon(record.status);
-		const durationText = record.duration ? ` (${DeploymentRecordHelper.formatDuration(record.duration)})` : '';
-		const timeFormat = new Date(record.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		const durationText = record.duration
+			? ` (${DeploymentRecordHelper.formatDuration(record.duration)})`
+			: '';
+		const timeFormat = new Date(record.startTime).toLocaleTimeString([], {
+			hour: '2-digit',
+			minute: '2-digit',
+		});
 		const label = `${statusIcon} ${record.profileName}${durationText}`;
 
 		return new HistoryTreeItem(
@@ -92,53 +98,65 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeI
 		const details: HistoryTreeItem[] = [];
 
 		// Project name
-		details.push(new HistoryTreeItem(
-			`Project: ${record.projectName}`,
-			vscode.TreeItemCollapsibleState.None,
-			'detail'
-		));
+		details.push(
+			new HistoryTreeItem(
+				`Project: ${record.projectName}`,
+				vscode.TreeItemCollapsibleState.None,
+				'detail'
+			)
+		);
 
 		// Environment
-		details.push(new HistoryTreeItem(
-			`Environment: ${record.environment}`,
-			vscode.TreeItemCollapsibleState.None,
-			'detail'
-		));
+		details.push(
+			new HistoryTreeItem(
+				`Environment: ${record.environment}`,
+				vscode.TreeItemCollapsibleState.None,
+				'detail'
+			)
+		);
 
 		// Start time
 		const startTime = new Date(record.startTime).toLocaleString();
-		details.push(new HistoryTreeItem(
-			`Started: ${startTime}`,
-			vscode.TreeItemCollapsibleState.None,
-			'detail'
-		));
+		details.push(
+			new HistoryTreeItem(
+				`Started: ${startTime}`,
+				vscode.TreeItemCollapsibleState.None,
+				'detail'
+			)
+		);
 
 		// End time
 		if (record.endTime) {
 			const endTime = new Date(record.endTime).toLocaleString();
-			details.push(new HistoryTreeItem(
-				`Completed: ${endTime}`,
-				vscode.TreeItemCollapsibleState.None,
-				'detail'
-			));
+			details.push(
+				new HistoryTreeItem(
+					`Completed: ${endTime}`,
+					vscode.TreeItemCollapsibleState.None,
+					'detail'
+				)
+			);
 		}
 
 		// Duration
 		if (record.duration) {
-			details.push(new HistoryTreeItem(
-				`Duration: ${DeploymentRecordHelper.formatDuration(record.duration)}`,
-				vscode.TreeItemCollapsibleState.None,
-				'detail'
-			));
+			details.push(
+				new HistoryTreeItem(
+					`Duration: ${DeploymentRecordHelper.formatDuration(record.duration)}`,
+					vscode.TreeItemCollapsibleState.None,
+					'detail'
+				)
+			);
 		}
 
 		// Error message if failed
 		if (record.status === 'failed' && record.errorMessage) {
-			details.push(new HistoryTreeItem(
-				`Error: ${record.errorMessage}`,
-				vscode.TreeItemCollapsibleState.None,
-				'error'
-			));
+			details.push(
+				new HistoryTreeItem(
+					`Error: ${record.errorMessage}`,
+					vscode.TreeItemCollapsibleState.None,
+					'error'
+				)
+			);
 		}
 
 		return details;
@@ -146,10 +164,14 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeI
 
 	private getStatusIcon(status: string): string {
 		switch (status) {
-			case 'success': return '✅';
-			case 'failed': return '❌';
-			case 'in-progress': return '⏳';
-			default: return '❓';
+			case 'success':
+				return '✅';
+			case 'failed':
+				return '❌';
+			case 'in-progress':
+				return '⏳';
+			default:
+				return '❓';
 		}
 	}
 }
@@ -175,7 +197,9 @@ export class HistoryTreeItem extends vscode.TreeItem {
 				if (this.record) {
 					this.iconPath = this.getStatusThemeIcon(this.record.status);
 					this.tooltip = this.createTooltip();
-					this.description = DeploymentRecordHelper.formatTimestamp(this.record.startTime);
+					this.description = DeploymentRecordHelper.formatTimestamp(
+						this.record.startTime
+					);
 				}
 				break;
 			case 'detail':
@@ -197,7 +221,10 @@ export class HistoryTreeItem extends vscode.TreeItem {
 			case 'failed':
 				return new vscode.ThemeIcon('error', new vscode.ThemeColor('testing.iconFailed'));
 			case 'in-progress':
-				return new vscode.ThemeIcon('sync~spin', new vscode.ThemeColor('testing.iconQueued'));
+				return new vscode.ThemeIcon(
+					'sync~spin',
+					new vscode.ThemeColor('testing.iconQueued')
+				);
 			default:
 				return new vscode.ThemeIcon('question');
 		}
@@ -211,7 +238,7 @@ export class HistoryTreeItem extends vscode.TreeItem {
 			`Project: ${this.record.projectName}`,
 			`Environment: ${this.record.environment}`,
 			`Status: ${this.record.status}`,
-			`Started: ${new Date(this.record.startTime).toLocaleString()}`
+			`Started: ${new Date(this.record.startTime).toLocaleString()}`,
 		];
 
 		if (this.record.endTime) {
