@@ -1,819 +1,516 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { PublishProfileInfo, ProjectInfo } from '../models/ProjectModels';
+import { PublishProfileInfo, ProjectInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IProfileService, ProfileWizardData } from '../services/ProfileService';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
+import { HistoryManager } from '../services/HistoryManager';
+import { DeploymentRecordHelper } from '../models/DeploymentRecord';
 
 /**
  * Profile Info Webview Panel
  * Shows profile details and allows editing
  */
 export class ProfileInfoPanel {
-    public static currentPanel: ProfileInfoPanel | undefined;
-    private readonly panel: vscode.WebviewPanel;
-    private disposables: vscode.Disposable[] = [];
-    
-    // Store mutable state
-    private currentProfileInfo: PublishProfileInfo;
-    private currentProjectName: string;
-    private currentProjectDir: string;
-    private isCreateMode: boolean;
+	// Map to store active panels: key -> panel
+	private static panels: Map<string, ProfileInfoPanel> = new Map();
 
-    private constructor(
-        panel: vscode.WebviewPanel,
-        profileInfo: PublishProfileInfo,
-        projectName: string,
-        projectDir: string,
-        private readonly profileService: IProfileService,
-        private readonly passwordStorage: IPasswordStorage,
-        private readonly outputChannel: vscode.OutputChannel,
-        private readonly onRefresh: () => void,
-        isCreateMode: boolean = false
-    ) {
-        this.panel = panel;
-        this.currentProfileInfo = profileInfo;
-        this.currentProjectName = projectName;
-        this.currentProjectDir = projectDir || this.deriveProjectDir(profileInfo.path);
-        this.isCreateMode = isCreateMode;
+	/**
+	 * Update all active panels
+	 */
+	public static updateAll() {
+		this.panels.forEach((panel) => panel.update());
+	}
 
-        // Set initial HTML content
-        this.update();
+	private readonly panel: vscode.WebviewPanel;
+	private disposables: vscode.Disposable[] = [];
 
-        // Handle messages from webview
-        this.panel.webview.onDidReceiveMessage(
-            async (message) => {
-                switch (message.command) {
-                    case 'save':
-                        await this.saveProfile(message.data);
-                        break;
-                    case 'close':
-                        this.panel.dispose();
-                        break;
-                    case 'openFile':
-                        // Open the .pubxml file in editor
-                        const uri = vscode.Uri.file(this.currentProfileInfo.path);
-                        await vscode.window.showTextDocument(uri, { preview: false });
-                        break;
-                    case 'deploy':
-                        await vscode.commands.executeCommand('dotnet-project-toolkit.deployProfile', { 
-                            profileInfo: this.currentProfileInfo 
-                        });
-                        break;
-                    case 'delete':
-                        await vscode.commands.executeCommand('dotnet-project-toolkit.deletePublishProfile', { 
-                            profileInfo: this.currentProfileInfo,
-                            projectName: this.currentProjectName
-                        });
-                        // Close panel if file was deleted
-                        if (!fs.existsSync(this.currentProfileInfo.path)) {
-                            this.panel.dispose();
-                        }
-                        break;
-                }
-            },
-            null,
-            this.disposables
-        );
+	// Store mutable state
+	private currentProfileInfo: PublishProfileInfo;
+	private currentProjectName: string;
+	private isCreateMode: boolean = false;
+	private projectInfo?: ProjectInfo;
+	private panelKey: string;
 
-        // Handle disposal
-        this.panel.onDidDispose(
-            () => this.dispose(),
-            null,
-            this.disposables
-        );
-    }
+	private constructor(
+		panel: vscode.WebviewPanel,
+		public readonly extensionUri: vscode.Uri,
+		profileInfo: PublishProfileInfo,
+		projectName: string,
+		private readonly profileService: IProfileService,
+		private readonly passwordStorage: IPasswordStorage,
+		private readonly historyManager: HistoryManager,
+		private readonly outputChannel: vscode.OutputChannel,
+		private readonly onRefresh: () => void,
+		key: string,
+		isCreateMode: boolean = false,
+		projectInfo?: ProjectInfo
+	) {
+		this.panel = panel;
+		this.currentProfileInfo = profileInfo;
+		this.currentProjectName = projectName;
+		this.panelKey = key;
+		this.isCreateMode = isCreateMode;
+		this.projectInfo = projectInfo;
 
-    /**
-     * Update panel with new profile data (reuse same tab)
-     */
-    public updateWithProfile(profileInfo: PublishProfileInfo, projectName: string) {
-        this.currentProfileInfo = profileInfo;
-        this.currentProjectName = projectName;
-        this.panel.title = `${projectName} / ${profileInfo.fileName}`;
-        this.update();
-    }
+		// Set initial HTML content
+		this.update();
 
-    public static show(
-        extensionUri: vscode.Uri,
-        profileInfo: PublishProfileInfo,
-        projectName: string,
-        profileService: IProfileService,
-        passwordStorage: IPasswordStorage,
-        outputChannel: vscode.OutputChannel,
-        onRefresh: () => void,
-        projectDir: string = '',
-        isCreateMode: boolean = false
-    ) {
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
+		// Handle messages from webview
+		this.panel.webview.onDidReceiveMessage(
+			async (message) => {
+				switch (message.command) {
+					case 'save':
+						await this.saveProfile(message.data);
+						break;
+					case 'close':
+						this.panel.dispose();
+						break;
+					case 'openFile':
+						if (this.currentProfileInfo.path) {
+							const uri = vscode.Uri.file(this.currentProfileInfo.path);
+							await vscode.window.showTextDocument(uri, { preview: false });
+						}
+						break;
+					case 'deploy':
+						// 1. Notify UI: Deployment Starting (Loading State)
+						// We manually force isDeploying: true here because the history record might not be written yet
+						// or we want immediate feedback before the command starts.
+						this._isDeploying = true;
+						// Send update with override for faster feedback, though next update() calls get it from _isDeploying
+						await this.sendUpdateData({ isDeploying: true });
+						await this.sendHistoryUpdate();
 
-        // If panel exists and NOT in create mode (we always want new panel or reset for create), update it
-        if (ProfileInfoPanel.currentPanel && !isCreateMode) {
-            ProfileInfoPanel.currentPanel.updateWithProfile(profileInfo, projectName);
-            ProfileInfoPanel.currentPanel.panel.reveal(column);
-            return;
-        }
-        
-        // Ensure only one panel exists even for create mode (or reuse)
-        if (ProfileInfoPanel.currentPanel) {
-            ProfileInfoPanel.currentPanel.panel.dispose();
-        }
+						// 2. Execute Deployment
+						await vscode.commands.executeCommand(
+							'dotnet-project-toolkit.deployProfile',
+							{
+								profileInfo: this.currentProfileInfo,
+								projectName: this.currentProjectName,
+							}
+						);
 
-        const title = isCreateMode 
-            ? `Create Profile: ${projectName}`
-            : `${projectName} / ${profileInfo.fileName}`;
+						// 3. Notify UI: Deployment Finished & Refresh History
+						this._isDeploying = false;
+						await this.sendUpdateData({ isDeploying: false });
+						await this.sendHistoryUpdate();
+						break;
+					case 'delete':
+						await vscode.commands.executeCommand(
+							'dotnet-project-toolkit.deletePublishProfile',
+							{
+								profileInfo: this.currentProfileInfo,
+								projectName: this.currentProjectName,
+							}
+						);
+						// Close panel if file was deleted
+						if (!fs.existsSync(this.currentProfileInfo.path)) {
+							this.panel.dispose();
+						}
+						break;
+					case 'viewLogs':
+						await vscode.commands.executeCommand('dotnet-project-toolkit.viewLogs', {
+							profileInfo: this.currentProfileInfo,
+							projectName: this.currentProjectName,
+						});
+						break;
+					case 'ready':
+						await this.sendUpdateData();
+						break;
+				}
+			},
+			null,
+			this.disposables
+		);
 
-        // Create new panel
-        const panel = vscode.window.createWebviewPanel(
-            'profileInfo',
-            title,
-            column || vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true
-            }
-        );
+		// Handle disposal
+		this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+	}
 
-        ProfileInfoPanel.currentPanel = new ProfileInfoPanel(
-            panel,
-            profileInfo,
-            projectName,
-            projectDir,
-            profileService,
-            passwordStorage,
-            outputChannel,
-            onRefresh,
-            isCreateMode
-        );
-    }
+	/**
+	 * Update panel with new profile data (reuse same tab)
+	 */
+	public updateWithProfile(profileInfo: PublishProfileInfo, projectName: string) {
+		this.currentProfileInfo = profileInfo;
+		this.currentProjectName = projectName;
+		this.panel.title = `${projectName} / ${profileInfo.fileName}`;
+		this.update();
+	}
 
-    public static showCreate(
-        extensionUri: vscode.Uri,
-        projectName: string,
-        projectDir: string,
-        profileService: IProfileService,
-        passwordStorage: IPasswordStorage,
-        outputChannel: vscode.OutputChannel,
-        onRefresh: () => void
-    ) {
-        // Create default empty profile
-        const emptyProfile: PublishProfileInfo = {
-            name: '',
-            fileName: '',
-            path: '',
-            environment: 'dev',
-            isProduction: false
-        };
+	public static show(
+		extensionUri: vscode.Uri,
+		profileInfo: PublishProfileInfo,
+		projectName: string,
+		profileService: IProfileService,
+		passwordStorage: IPasswordStorage,
+		historyManager: HistoryManager,
+		outputChannel: vscode.OutputChannel,
+		onRefresh: () => void
+	) {
+		const column = vscode.window.activeTextEditor
+			? vscode.window.activeTextEditor.viewColumn
+			: undefined;
 
-        ProfileInfoPanel.show(
-            extensionUri,
-            emptyProfile,
-            projectName,
-            profileService, // signature mismatch correction
-            passwordStorage,
-            outputChannel,
-            onRefresh,
-            projectDir, // projectDir is passed here
-            true // isCreateMode
-        );
-    }
+		// Generate unique key for this profile view
+		const key = `view:${projectName}:${profileInfo.fileName}`;
 
-    private async saveProfile(data: ProfileWizardData) {
-        try {
-            this.outputChannel.appendLine(`[ProfileInfo] Saving: ${data.profileName}`);
+		// If panel exists, reveal it
+		if (ProfileInfoPanel.panels.has(key)) {
+			ProfileInfoPanel.panels.get(key)?.panel.reveal(column);
+			return;
+		}
 
-            let success: string | boolean | null;
+		// Create new panel
+		const panel = vscode.window.createWebviewPanel(
+			'profileInfo',
+			`${projectName} / ${profileInfo.fileName}`,
+			column || vscode.ViewColumn.One,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+				localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
+			}
+		);
 
-            if (this.isCreateMode) {
-                // Create new profile
-                const projectInfo: ProjectInfo = {
-                    name: this.currentProjectName,
-                    projectDir: this.currentProjectDir,
-                    csprojPath: '',
-                    projectType: 'unknown',
-                    profiles: []
-                };
+		const instance = new ProfileInfoPanel(
+			panel,
+			extensionUri,
+			profileInfo,
+			projectName,
+			profileService,
+			passwordStorage,
+			historyManager,
+			outputChannel,
+			onRefresh,
+			key
+		);
 
-                success = await this.profileService.create(projectInfo, data);
-            } else {
-                // Update existing profile
-                success = await this.profileService.update(this.currentProfileInfo.path, data);
-            }
+		ProfileInfoPanel.panels.set(key, instance);
+	}
 
-            if (success) {
-                // Save password if changed
-                if (data.password && data.password !== 'KEEP_EXISTING') {
-                    const passwordKey = this.passwordStorage.generateKey(this.currentProjectName, data.profileName);
-                    await this.passwordStorage.store(passwordKey, data.password);
-                }
+	/**
+	 * Show panel for creating a new profile
+	 */
+	public static showForCreate(
+		extensionUri: vscode.Uri,
+		projectInfo: ProjectInfo,
+		profileName: string,
+		environment: DeployEnvironment,
+		profileService: IProfileService,
+		passwordStorage: IPasswordStorage,
+		historyManager: HistoryManager,
+		outputChannel: vscode.OutputChannel,
+		onRefresh: () => void
+	) {
+		const column = vscode.window.activeTextEditor
+			? vscode.window.activeTextEditor.viewColumn
+			: undefined;
 
-                if (this.isCreateMode) {
-                    vscode.window.showInformationMessage(`✅ Profile "${data.profileName}" created!`);
-                    this.isCreateMode = false;
-                    
-                    // Update current profile info with the new one
-                    const profilePath = typeof success === 'string' ? success : this.currentProfileInfo.path;
-                    const updatedProfile = this.profileService.parse(profilePath);
-                    
-                    if (updatedProfile) {
-                        this.currentProfileInfo = updatedProfile;
-                        // Update panel title
-                        this.panel.title = `${this.currentProjectName} / ${updatedProfile.fileName}`;
-                    }
+		// Generate unique key for creation
+		const key = `create:${projectInfo.name}:${profileName}`;
 
-                    // Refresh logic will follow below
-                    this.update();
-                } else {
-                    vscode.window.showInformationMessage(`✅ Profile "${data.profileName}" saved!`);
-                    
-                    // Reload profile info from disk to get updated properties
-                    const updatedProfile = this.profileService.parse(this.currentProfileInfo.path);
-                    if (updatedProfile) {
-                        this.currentProfileInfo = updatedProfile;
-                        this.panel.title = `${this.currentProjectName} / ${updatedProfile.fileName}`;
-                        
-                        // Send update message to webview instead of full re-render
-                        this.panel.webview.postMessage({
-                            command: 'updateProfile',
-                            data: {
-                                environment: updatedProfile.environment,
-                                fileName: updatedProfile.fileName
-                            }
-                        });
-                    }
-                }
+		// If panel exists for this creation attempt, reveal it
+		if (ProfileInfoPanel.panels.has(key)) {
+			ProfileInfoPanel.panels.get(key)?.panel.reveal(column);
+			return;
+		}
 
-                this.onRefresh();
-                this.outputChannel.appendLine(`[ProfileInfo] ✓ Saved/Created successfully`);
-            } else {
-                vscode.window.showErrorMessage('Failed to save profile');
-                this.outputChannel.appendLine(`[ProfileInfo] Save operation returned false/null`);
-            }
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to save: ${error}`);
-            this.outputChannel.appendLine(`[ProfileInfo] Error: ${error}`);
-        }
-    }
+		// Create new panel
+		const panel = vscode.window.createWebviewPanel(
+			'profileInfo',
+			`New Profile: ${profileName}`,
+			column || vscode.ViewColumn.One,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+				localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
+			}
+		);
 
-    private update() {
-        const passwordKey = this.passwordStorage.generateKey(this.currentProjectName, this.currentProfileInfo.fileName);
-        
-        this.panel.webview.html = this.getHtmlContent(passwordKey);
-    }
+		// Create empty profile info for the form
+		const emptyProfileInfo: PublishProfileInfo = {
+			name: profileName,
+			path: '', // Will be set when saved
+			fileName: profileName,
+			environment: environment,
+			isProduction: environment === DeployEnvironment.Production,
+			publishUrl: '',
+			siteName: '',
+			siteUrl: '',
+			userName: '',
+			openBrowserOnDeploy: true,
+			enableStdoutLog: false,
+			logPath: '',
+		};
 
-    private getHtmlContent(passwordKey: string): string {
-        const profile = this.currentProfileInfo;
-        const envBadge = this.getEnvBadge(profile.environment);
+		const instance = new ProfileInfoPanel(
+			panel,
+			extensionUri,
+			emptyProfileInfo,
+			projectInfo.name,
+			profileService,
+			passwordStorage,
+			historyManager,
+			outputChannel,
+			onRefresh,
+			key,
+			true, // isCreateMode
+			projectInfo
+		);
 
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile: ${profile.fileName}</title>
-    <style>
-        :root {
-            --bg: var(--vscode-editor-background);
-            --fg: var(--vscode-editor-foreground);
-            --input-bg: var(--vscode-input-background);
-            --input-border: var(--vscode-input-border);
-            --btn-bg: var(--vscode-button-background);
-            --btn-fg: var(--vscode-button-foreground);
-            --btn-hover: var(--vscode-button-hoverBackground);
-            --error: var(--vscode-errorForeground);
-            --success: #4caf50;
-            --warning: #ff9800;
-            --danger: #d32f2f;
-            --danger-hover: #b71c1c;
-        }
-        
-        body {
-            font-family: var(--vscode-font-family);
-            background: var(--bg);
-            color: var(--fg);
-            padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-        
-        .badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.7em;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        
-        .badge.uat { background: #2196f3; color: white; }
-        .badge.prod { background: #f44336; color: white; }
-        .badge.dev { background: #4caf50; color: white; }
-        .badge.unknown { background: #9e9e9e; color: white; }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 500;
-            font-size: 0.9em;
-        }
-        
-        input, select {
-            width: 100%;
-            padding: 8px 12px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            color: var(--fg);
-            border-radius: 4px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        
-        input:focus, select:focus {
-            outline: 1px solid var(--btn-bg);
-        }
-        
-        input[readonly] {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-        
-        .hint {
-            font-size: 0.8em;
-            color: var(--vscode-descriptionForeground);
-            margin-top: 4px;
-        }
-        
-        .actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 24px;
-            padding-top: 16px;
-            border-top: 1px solid var(--input-border);
-        }
+		ProfileInfoPanel.panels.set(key, instance);
+	}
 
-        .actions-left {
-            display: flex;
-            gap: 10px;
-        }
-        
-        button {
-            height: 32px;
-            padding: 0 16px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            transition: all 0.2s;
-            outline: none;
-        }
-        
-        button:active {
-            transform: translateY(1px);
-        }
+	private _isDeploying: boolean = false;
 
-        .btn-primary {
-            background: var(--btn-bg);
-            color: var(--btn-fg);
-        }
-        
-        .btn-primary:hover {
-            background: var(--btn-hover);
-        }
-        
-        .btn-secondary {
-            background: transparent;
-            border-color: var(--input-border);
-            color: var(--fg);
-        }
-        
-        .btn-secondary:hover {
-            background: var(--vscode-toolbar-hoverBackground);
-        }
-        
-        .info-box {
-            background: var(--vscode-textBlockQuote-background);
-            border-left: 3px solid var(--btn-bg);
-            padding: 12px;
-            margin-bottom: 20px;
-            font-size: 0.9em;
-        }
-        
-        .info-box code {
-            background: var(--input-bg);
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: var(--vscode-editor-font-family);
-        }
-        
-        .header {
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--input-border);
-        }
+	private async saveProfile(data: ProfileWizardData) {
+		try {
+			this.outputChannel.appendLine(`[ProfileInfo] Saving: ${data.profileName}`);
 
-        .title-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-        
-        .titles {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .project-header {
-            font-size: 1.5em;
-            font-weight: 600;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--fg);
-        }
-        
-        .profile-subheader {
-            color: var(--vscode-textLink-foreground);
-            margin: 0;
-            font-weight: 500;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: opacity 0.2s;
-        }
+			// Get project info
+			let projectInfo: ProjectInfo;
+			if (this.isCreateMode && this.projectInfo) {
+				projectInfo = this.projectInfo;
+			} else {
+				projectInfo = {
+					name: this.currentProjectName,
+					projectDir: this.currentProfileInfo.path.replace(
+						/[\\\/]Properties[\\\/]PublishProfiles[\\\/][^\\\/]+$/i,
+						''
+					),
+					csprojPath: '',
+					projectType: 'unknown',
+					profiles: [],
+				};
+			}
 
-        .profile-subheader:hover {
-            opacity: 0.8;
-            text-decoration: underline;
-        }
-        
-        .link-icon {
-            font-size: 0.8em;
-            opacity: 0.7;
-        }
-        
-        .icon-btn {
-            padding: 6px 12px;
-            background: transparent;
-            border: 1px solid var(--input-border);
-            color: var(--fg);
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            white-space: nowrap;
-        }
-        
-        .icon-btn:hover {
-            background: var(--vscode-toolbar-hoverBackground);
-        }
+			// Save profile (create or update)
+			const profilePath = await this.profileService.create(
+				projectInfo,
+				data,
+				!this.isCreateMode
+			);
 
-        .toolbar {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
+			if (profilePath) {
+				// Save password if provided
+				if (data.password && data.password !== 'KEEP_EXISTING') {
+					const passwordKey = this.passwordStorage.generateKey(
+						this.currentProjectName,
+						data.profileName
+					);
+					await this.passwordStorage.store(passwordKey, data.password);
+				}
 
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-        
-        .btn-success:hover {
-            filter: brightness(1.1);
-        }
+				const message = this.isCreateMode
+					? `✅ Profile "${data.profileName}" created successfully!`
+					: `✅ Profile "${data.profileName}" saved!`;
+				vscode.window.setStatusBarMessage(message, 5000);
 
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
+				// Reload profile info from disk
+				// Update current profile info with saved data immediately to ensure UI consistency
+				// (Parsing from disk might have delays or potential issues, so we trust the input data for now)
+				this.currentProfileInfo = {
+					name: data.profileName,
+					path: profilePath,
+					fileName: data.profileName,
+					environment: data.environment,
+					isProduction: data.environment === DeployEnvironment.Production,
+					publishUrl: data.publishUrl,
+					siteName: data.siteName,
+					siteUrl: data.siteUrl || '',
+					userName: data.username,
+					openBrowserOnDeploy: data.openBrowserOnDeploy,
+					enableStdoutLog: data.enableStdoutLog,
+					logPath: data.logPath,
+				};
 
-        .btn-danger:hover {
-            background: var(--danger-hover);
-        }
-        
-        .icon-link {
-            cursor: pointer;
-            font-size: 0.9em;
-            margin: 0 8px;
-            opacity: 0.6;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-        }
-        
-        .icon-link:hover {
-            opacity: 1;
-            background: var(--vscode-toolbar-hoverBackground);
-        }
-        
-        .history-section {
-            margin-top: 32px;
-            padding-top: 16px;
-            border-top: 1px solid var(--input-border);
-        }
-        
-        .history-section h2 {
-            font-size: 1.1em;
-            margin-bottom: 12px;
-        }
-        
-        .history-placeholder {
-            background: var(--vscode-textBlockQuote-background);
-            padding: 16px;
-            border-radius: 4px;
-            text-align: center;
-            color: var(--vscode-descriptionForeground);
-        }
-        
-        .history-placeholder p {
-            margin: 0 0 8px 0;
-        }
-        
-        .error-box {
-            background: var(--vscode-inputValidation-errorBackground);
-            border: 1px solid var(--vscode-inputValidation-errorBorder);
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 16px;
-        }
-        
-        .error-box ul {
-            margin: 8px 0 0 0;
-            padding-left: 20px;
-        }
-        
-        .error-box li {
-            margin: 4px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="title-row">
-            <div class="titles">
-                <h1 class="project-header">
-                    📦 ${this.currentProjectName}
-                </h1>
-                ${this.isCreateMode ? `
-                    <h2 class="profile-subheader" style="cursor: default; text-decoration: none; color: var(--fg);">
-                        ✨ Create New Profile
-                    </h2>
-                ` : `
-                    <h2 class="profile-subheader" onclick="openFile()" title="Click to open .pubxml file">
-                        ${profile.fileName} <span class="link-icon">🔗</span>
-                    </h2>
-                `}
-            </div>
-            <div class="toolbar">
-                ${!this.isCreateMode ? `
-                    <span class="badge ${profile.environment}">${profile.environment.toUpperCase()}</span>
-                    <button type="button" class="btn-success" onclick="deploy()" title="Deploy to this environment">
-                        🚀 Deploy
-                    </button>
-                ` : ''}
-            </div>
-        </div>
-    </div>
-    
-    <div class="info-box">
-        <strong>Password Variable:</strong> <code>${passwordKey}</code><br>
-        <small>Used when deploying: <code>/p:Password=$env:${passwordKey}</code></small>
-    </div>
-    
-    <form id="profileForm">
-        ${this.isCreateMode ? `
-        <div class="form-group">
-            <label>Profile Name</label>
-            <input type="text" id="profileName" placeholder="e.g. uat-api, prod-web" required>
-            <div class="hint">Use letters, numbers, hyphens only</div>
-        </div>
-        ` : ''}
-        
-        <div class="form-group">
-            <label>Environment</label>
-            <select id="environment">
-                <option value="uat" ${profile.environment === 'uat' ? 'selected' : ''}>UAT - Testing</option>
-                <option value="prod" ${profile.environment === 'prod' ? 'selected' : ''}>PROD - Production ⚠️</option>
-                <option value="dev" ${profile.environment === 'dev' ? 'selected' : ''}>DEV - Development</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label>Publish URL (IP or Domain)</label>
-            <input type="text" id="publishUrl" value="${profile.publishUrl || ''}" placeholder="192.168.10.3">
-        </div>
-        
-        <div class="form-group">
-            <label>IIS Site Name</label>
-            <input type="text" id="siteName" value="${profile.siteName || ''}" placeholder="TS_BUDGETCTRL_API_UAT">
-        </div>
-        
-        <div class="form-group">
-            <label>Site URL (for browser launch)</label>
-            <input type="text" id="siteUrl" value="${profile.siteUrl || ''}" placeholder="https://example.com">
-        </div>
-        
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="username" value="${profile.userName || ''}" placeholder="namnh">
-        </div>
-        
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="password" placeholder="Leave empty to keep existing">
-            <div class="hint">Only enter if you want to change the password</div>
-        </div>
-        
-        <div class="actions">
-            <div class="actions-left">
-                <button type="submit" class="btn-primary">
-                    ${this.isCreateMode ? '✨ Create Profile' : '💾 Save Changes'}
-                </button>
-                <button type="button" class="btn-secondary" onclick="resetForm()">Cancel</button>
-            </div>
-            ${!this.isCreateMode ? `
-            <button type="button" class="btn-danger" onclick="deleteProfile()" title="Delete this profile">
-                🗑️ Delete
-            </button>
-            ` : ''}
-        </div>
-    </form>
-    
-    <div class="history-section">
-        <h2>📜 Publish History</h2>
-        <div class="history-placeholder">
-            <p>No publish history available yet.</p>
-            <small>History will be recorded when you deploy using this profile.</small>
-        </div>
-    </div>
-    
-    <script>
-        const vscode = acquireVsCodeApi();
-        
-        // Listen for messages from extension
-        window.addEventListener('message', event => {
-            const message = event.data;
-            switch (message.command) {
-                case 'updateProfile':
-                    // Update badge without resetting form
-                    const badge = document.querySelector('.badge');
-                    if (badge && message.data.environment) {
-                        badge.className = 'badge ' + message.data.environment;
-                        badge.textContent = message.data.environment.toUpperCase();
-                    }
-                    break;
-            }
-        });
-        
-        // Store initial values for reset
-        const isCreateMode = ${this.isCreateMode};
-        const profileName = '${profile.fileName}';
-        const initialData = {
-            environment: '${profile.environment}',
-            publishUrl: '${profile.publishUrl || ''}',
-            siteName: '${profile.siteName || ''}',
-            siteUrl: '${profile.siteUrl || ''}',
-            username: '${profile.userName || ''}',
-            password: ''
-        };
-        
-        document.getElementById('profileForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // Validate required fields
-            const publishUrl = document.getElementById('publishUrl').value.trim();
-            const siteName = document.getElementById('siteName').value.trim();
-            const username = document.getElementById('username').value.trim();
-            
-            let errors = [];
-            
-            // Validate Profile Name in Create Mode
-            let pName = profileName;
-            if (isCreateMode) {
-                const pInput = document.getElementById('profileName');
-                if (!pInput.value.trim()) {
-                    errors.push('Profile Name is required');
-                } else if (!/^[a-zA-Z0-9-_]+$/.test(pInput.value.trim())) {
-                    errors.push('Profile Name must contain only letters, numbers, hyphens, or underscores');
-                }
-                pName = pInput.value.trim();
-            }
+				this.panel.title = `${this.currentProjectName} / ${this.currentProfileInfo.fileName}`;
+				this.isCreateMode = false; // Switch to edit mode after first save
 
-            if (!publishUrl) errors.push('Publish URL is required');
-            if (!siteName) errors.push('Site Name is required');
-            if (!username) errors.push('Username is required');
-            
-            // Show validation errors
-            clearErrors();
-            if (errors.length > 0) {
-                showErrors(errors);
-                return;
-            }
-            
-            const data = {
-                profileName: pName,
-                environment: document.getElementById('environment').value,
-                publishUrl: publishUrl,
-                siteName: siteName,
-                siteUrl: document.getElementById('siteUrl').value || undefined,
-                username: username,
-                password: document.getElementById('password').value || 'KEEP_EXISTING'
-            };
-            
-            vscode.postMessage({ command: 'save', data });
-        });
-        
-        function resetForm() {
-            if (isCreateMode) {
-                document.getElementById('profileName').value = '';
-            }
-            document.getElementById('environment').value = initialData.environment;
-            document.getElementById('publishUrl').value = initialData.publishUrl;
-            document.getElementById('siteName').value = initialData.siteName;
-            document.getElementById('siteUrl').value = initialData.siteUrl;
-            document.getElementById('username').value = initialData.username;
-            document.getElementById('password').value = '';
-            clearErrors();
-        }
-        
-        function clearErrors() {
-            const existing = document.querySelector('.error-box');
-            if (existing) existing.remove();
-        }
-        
-        function showErrors(errors) {
-            const errorBox = document.createElement('div');
-            errorBox.className = 'error-box';
-            errorBox.innerHTML = '<strong>⚠️ Validation Errors:</strong><ul>' + 
-                errors.map(e => '<li>' + e + '</li>').join('') + '</ul>';
-            document.querySelector('.actions').before(errorBox);
-        }
-        
-        function openFile() {
-            vscode.postMessage({ command: 'openFile' });
-        }
+				this.onRefresh();
+				this.update(); // Re-render webview with new data
+				this.outputChannel.appendLine(`[ProfileInfo] ✓ Saved successfully`);
+			}
+		} catch (error) {
+			vscode.window.showErrorMessage(`Failed to save: ${error}`);
+			this.outputChannel.appendLine(`[ProfileInfo] Error: ${error}`);
+		}
+	}
 
-        function deploy() {
-            vscode.postMessage({ command: 'deploy' });
-        }
+	public update() {
+		const passwordKey = this.passwordStorage.generateKey(
+			this.currentProjectName,
+			this.currentProfileInfo.fileName
+		);
 
-        function deleteProfile() {
-            vscode.postMessage({ command: 'delete' });
-        }
-    </script>
-</body>
-</html>`;
-    }
+		this.panel.webview.html = this.getHtmlContent(passwordKey);
+		// Also send data update in case webview is already loaded
+		this.sendUpdateData();
+	}
 
-    private getEnvBadge(env: string): string {
-        const colors: Record<string, string> = {
-            uat: '#2196f3',
-            prod: '#f44336',
-            dev: '#4caf50',
-            unknown: '#9e9e9e'
-        };
-        return colors[env] || colors.unknown;
-    }
+	private async sendUpdateData(overrides: Partial<any> = {}) {
+		const passwordKey = this.passwordStorage.generateKey(
+			this.currentProjectName,
+			this.currentProfileInfo.fileName
+		);
+		const profile = this.currentProfileInfo;
 
-    public dispose() {
-        ProfileInfoPanel.currentPanel = undefined;
-        this.panel.dispose();
-        while (this.disposables.length) {
-            const d = this.disposables.pop();
-            if (d) d.dispose();
-        }
-    }
+		const baseData = {
+			projectName: this.currentProjectName,
+			profileFileName: profile.fileName,
+			environment: profile.environment,
+			publishUrl: profile.publishUrl,
+			siteName: profile.siteName,
+			siteUrl: profile.siteUrl,
+			username: profile.userName,
+			openBrowserOnDeploy: profile.openBrowserOnDeploy,
+			enableStdoutLog: profile.enableStdoutLog,
+			logPath: profile.logPath,
+			passwordKey: passwordKey,
+			isDeploying: this._isDeploying || this.isDeploying(profile.fileName),
+			isCreateMode: this.isCreateMode,
+		};
 
+		const data = { ...baseData, ...overrides };
 
-    private deriveProjectDir(profilePath: string): string {
-        if (!profilePath) return '';
-        // Remove /Properties/PublishProfiles/filename.pubxml
-        return profilePath.replace(/[\\\/]Properties[\\\/]PublishProfiles[\\\/].*$/, '');
-    }
+		if (this.panel && this.panel.webview) {
+			await this.panel.webview.postMessage({ command: 'updateData', data });
+		}
+	}
+
+	private async sendHistoryUpdate() {
+		if (this.panel && this.panel.webview) {
+			const historyHtml = this.renderHistory();
+			await this.panel.webview.postMessage({
+				command: 'updateHistory',
+				html: historyHtml,
+			});
+		}
+	}
+
+	private getHtmlContent(passwordKey: string): string {
+		try {
+			const htmlPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'profile-info.html');
+			const cssPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'profile-info.css');
+			const jsPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'profile-info.js');
+
+			// Convert local paths to Webview URIs
+			const cssUri = this.panel.webview.asWebviewUri(cssPath);
+			const jsUri = this.panel.webview.asWebviewUri(jsPath);
+			const nonce = this.getNonce();
+			const cspSource = this.panel.webview.cspSource;
+
+			// Content Security Policy
+			const cspMeta = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`;
+
+			let htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf-8');
+
+			const profile = this.currentProfileInfo;
+
+			// Render history (server-side rendering due to complexity)
+			const historyHtml = this.renderHistory();
+
+			// Inject resource URIs and History HTML
+			htmlContent = htmlContent
+				.replace('{{CSP_META}}', cspMeta)
+				.replace('{{NONCE}}', nonce) // For inline script
+				.replace('{{NONCE}}', nonce) // For external script source
+				.replace('{{TITLE}}', `Profile: ${profile.fileName}`)
+				.replace('{{CSS_URI}}', cssUri.toString())
+				.replace('{{JS_URI}}', jsUri.toString())
+				.replace('{{HISTORY_CONTENT}}', historyHtml);
+
+			return htmlContent;
+		} catch (error) {
+			this.outputChannel.appendLine(`[ProfileInfo] Error loading HTML: ${error}`);
+			return `<html><body><h1>Error loading profile-info.html</h1><p>${error}</p></body></html>`;
+		}
+	}
+
+	private getNonce() {
+		let text = '';
+		const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		for (let i = 0; i < 32; i++) {
+			text += possible.charAt(Math.floor(Math.random() * possible.length));
+		}
+		return text;
+	}
+
+	private renderHistory(): string {
+		const allHistory = this.historyManager.getAllHistory();
+		const profileHistory = allHistory
+			.filter((h) => h.profileName === this.currentProfileInfo.fileName)
+			.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()); // Ensure desc order
+
+		// Prepend fake 'in-progress' item if locally deploying and not yet in history
+		let displayItems = [...profileHistory];
+		if (this._isDeploying) {
+			const alreadyInProgress =
+				displayItems.length > 0 && displayItems[0].status === 'in-progress';
+			if (!alreadyInProgress) {
+				displayItems.unshift({
+					id: 'temp-pending',
+					profileName: this.currentProfileInfo.fileName,
+					status: 'in-progress',
+					startTime: new Date().toISOString(),
+					duration: 0,
+					projectName: this.currentProjectName,
+					environment: this.currentProfileInfo.environment,
+				});
+			}
+		}
+
+		displayItems = displayItems.slice(0, 5); // Show last 5 entries
+
+		if (displayItems.length === 0) {
+			return `
+                <div class="history-placeholder">
+                    <p>No publish history available yet.</p>
+                    <small>History will be recorded when you deploy using this profile.</small>
+                </div>`;
+		}
+
+		const items = displayItems
+			.map((h) => {
+				const isInProgress = h.status === 'in-progress';
+				const statusIcon =
+					h.status === 'success'
+						? '✅'
+						: h.status === 'failed'
+							? '❌'
+							: '<div class="spinner"></div>';
+				const duration = h.duration
+					? DeploymentRecordHelper.formatDuration(h.duration)
+					: '';
+				const startTime = new Date(h.startTime).toLocaleString();
+				const statusText = isInProgress ? 'DEPLOYING...' : h.status.toUpperCase();
+
+				return `
+                <div class="history-item ${h.status}">
+                    <div class="history-info">
+                        <div class="history-status">${statusIcon} ${statusText}</div>
+                        <div class="history-time">${startTime}</div>
+                    </div>
+                    <div class="history-duration">${duration}</div>
+                </div>`;
+			})
+			.join('');
+
+		return `<div class="history-list">${items}</div>`;
+	}
+
+	private isDeploying(profileName: string): boolean {
+		const allHistory = this.historyManager.getAllHistory();
+		const latest = allHistory.find((h) => h.profileName === profileName);
+		return latest?.status === 'in-progress';
+	}
+
+	public dispose() {
+		ProfileInfoPanel.panels.delete(this.panelKey);
+		this.panel.dispose();
+		while (this.disposables.length) {
+			const d = this.disposables.pop();
+			if (d) d.dispose();
+		}
+	}
 }

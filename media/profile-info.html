@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{TITLE}}</title>
+    {{CSP_META}}
+    <link rel="stylesheet" href="{{CSS_URI}}" />
+  </head>
+
+  <body>
+    <div class="header">
+      <div class="header-content">
+        <!-- LEFT COLUMN -->
+        <div class="header-left">
+          <!-- Row 1: Edit Profile : Profile Name -->
+          <div class="header-title-row">
+            <span id="modeHeader" class="mode-text"></span>
+            <span>:</span>
+            <span id="displayProfileName" class="profile-name-text"></span>
+          </div>
+          <!-- Row 2: Project Name -->
+          <div class="project-name-row">
+            <span id="displayProjectName"></span>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="header-right">
+          <!-- Row 1: Brand -->
+          <div class="brand-name">.NET Project Toolkit</div>
+          <!-- Row 2: Badge & Buttons -->
+          <div class="toolbar-actions">
+            <span id="envBadge" class="badge"></span>
+            <div id="deployBtnContainer">
+              <button
+                type="button"
+                class="btn-success"
+                id="btnDeploy"
+                title="Deploy to this environment"
+              >
+                Deploy
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <form id="profileForm">
+      <div class="form-group">
+        <label>Environment</label>
+        <select id="environment">
+          <option value="staging">Staging</option>
+          <option value="production">Production ⚠️</option>
+          <option value="dev">Development</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Publish URL (IP or Domain)</label>
+        <input type="text" id="publishUrl" placeholder="192.168.10.3" />
+      </div>
+
+      <!-- Site Name & Site URL split row -->
+      <div class="form-row-split">
+        <div class="form-group">
+          <label>IIS Site Name</label>
+          <input
+            type="text"
+            id="siteName"
+            placeholder="MY_APP_API_UAT"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Site URL (for browser launch)</label>
+          <input type="text" id="siteUrl" placeholder="https://example.com" />
+          <div
+            class="checkbox-container"
+            style="
+              margin-top: 8px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <input
+              type="checkbox"
+              id="openBrowserOnDeploy"
+              style="width: auto; margin: 0"
+            />
+            <label
+              for="openBrowserOnDeploy"
+              style="
+                margin: 0;
+                font-size: 0.9em;
+                font-weight: normal;
+                cursor: pointer;
+              "
+              >Open in browser after deploy</label
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Username & Password split row -->
+      <div class="form-row-split">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="namnh" />
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <input
+            type="password"
+            id="password"
+            placeholder="Leave empty to keep existing"
+          />
+          <div class="hint">Only enter if you want to change the password</div>
+        </div>
+      </div>
+
+      <!-- Deployment Options -->
+      <div class="form-group">
+        <label style="font-weight: 600; margin-bottom: 8px; display: block;">Deployment Options</label>
+        <div
+          class="checkbox-container"
+          style="
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+          "
+        >
+          <input
+            type="checkbox"
+            id="enableStdoutLog"
+            style="width: auto; margin: 0; margin-top: 3px;"
+          />
+          <div style="flex: 1;">
+            <label
+              for="enableStdoutLog"
+              style="
+                margin: 0;
+                font-size: 0.9em;
+                font-weight: normal;
+                cursor: pointer;
+                display: block;
+              "
+              >Enable stdout logging (for debugging)</label
+            >
+            <small class="hint" style="margin-top: 4px; display: block;">
+              Enables detailed logging to help troubleshoot startup issues. Logs will be written to .\logs\stdout folder on the IIS server.
+            </small>
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <label for="logPath" style="font-size: 0.9em; display: block; margin-bottom: 4px;">
+            Log Path (optional)
+          </label>
+          <div style="display: flex; gap: 8px; align-items: flex-start;">
+            <div style="flex: 1;">
+              <input
+                type="text"
+                id="logPath"
+                placeholder="D:\www\MyApp\PROD\api\logs\stdout"
+                style="width: 100%;"
+              />
+              <small class="hint" style="margin-top: 4px; display: block;">
+                Absolute path to stdout logs folder on IIS server. Leave empty to use default.
+              </small>
+            </div>
+            <button
+              type="button"
+              class="btn-secondary"
+              id="btnViewLogs"
+              title="View stdout logs from IIS server"
+              style="min-width: 100px; height: 32px; margin-top: 0;"
+            >
+              📋 View Logs
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="actions-left">
+          <button type="submit" class="btn-primary">💾 Save Changes</button>
+          <button type="button" class="btn-secondary" id="btnCancel">
+            Cancel
+          </button>
+        </div>
+        <button
+          type="button"
+          class="btn-danger"
+          id="btnDelete"
+          title="Delete this profile"
+        >
+          🗑️ Delete
+        </button>
+      </div>
+    </form>
+
+    <div class="history-section">
+      <h2>📜 Publish History</h2>
+      <!-- History content injected here -->
+      <div id="historyContainer">{{HISTORY_CONTENT}}</div>
+    </div>
+
+    <script nonce="{{NONCE}}" src="{{JS_URI}}"></script>
+  </body>
+</html>

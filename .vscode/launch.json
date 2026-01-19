@@ -6,13 +6,9 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
-			],
+			"args": ["--extensionDevelopmentPath=${workspaceFolder}"],
 			"name": "Launch Extension",
-			"outFiles": [
-				"${workspaceFolder}/dist/**/*.js"
-			],
+			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
 			// "preLaunchTask": "watch",
 			"request": "launch",
 			"type": "extensionHost"
@@ -21,12 +17,8 @@
 			"name": "Run Extension",
 			"type": "extensionHost",
 			"request": "launch",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
-			],
-			"outFiles": [
-				"${workspaceFolder}/dist/**/*.js"
-			],
+			"args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
 			"preLaunchTask": "${defaultBuildTask}"
 		}
 	]

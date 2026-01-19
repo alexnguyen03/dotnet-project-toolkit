@@ -1,244 +1,188 @@
 # .NET Project Toolkit
 
-**All-in-one project toolkit for .NET developers**
+**All-in-one project toolkit for .NET developers - deployment, watch, and debug management**
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/yourpublisher/dotnet-project-toolkit)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/alexnguyen03/dotnet-project-toolkit)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## 🎯 Features
+---
 
-### ✅ v0.1.0 - Multi-View Panel Structure
+## Table of Contents
 
-The extension provides **4 dedicated views** in the Activity Bar for different .NET development tasks:
-
-#### 📦 Publish View
-
-- Hierarchical project structure (folders → projects → profiles)
-- One-click deployment to UAT/PROD environments
-- Deploy button on each publish profile
-- PROD deployment confirmation dialog
-- Deployment progress tracking
-- Output channel logging
-
-#### ⚡ Watch View _(Coming in v1.1)_
-
-- Multiple watch instances management
-- Hot-reload support
-- Auto-attach debugger capability
-
-#### 🐛 Debug View _(Coming in v1.1)_
-
-- Debug configuration management
-- Multi-session debugging
-- Quick profile switching
-
-#### 📜 History View _(Coming in v1.2)_
-
-- Deployment history tracking
-- Timeline visualization
-- Rollback functionality
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage Guide](#usage-guide)
+    - [Publish Profiles](#1-publish-profiles)
+    - [Profile Management](#2-profile-management)
+    - [Deployment](#3-deployment)
+    - [View Logs](#4-view-logs)
+    - [Watch Management](#5-watch-management)
+    - [Debug Management](#6-debug-management)
+    - [Deployment History](#7-deployment-history)
+- [Configuration](#configuration)
+- [Security](#security)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🚀 Getting Started
+## Features
 
-### Installation
+### Publish & Deployment
 
-1. **Install from VSIX** (Development):
+> **Note**: Currently supports **IIS Web Deploy (MSDeploy)** via `.pubxml` profiles. Docker and other targets are planned.
 
-   ```bash
-   npm run compile
-   # Press F5 to launch Extension Development Host
-   ```
+- **Profile Detection**: Scans workspace for `.pubxml` files per project.
+- **IIS Deployment**: One-click deploy to Staging, Production, or Dev environments.
+- **Credential Management**: Securely encrypted password storage.
+- **Profile Editor**: Direct UI for managing publish profiles.
+- **Auto Browser Launch**: Opens site after successful deployment.
+- **IIS Log Viewer**: Download and view logs from the server.
+- **Web.config Modifier**: Adjust settings during deployment.
 
-2. **From Marketplace** (When published):
-   - Search for ".NET Project Toolkit" in VS Code Extensions
-   - Click Install
+### Watch & Debug (Local Dev)
 
-### Quick Start
+- **Multi-Project Watch**: Run multiple `dotnet watch` instances.
+- **Groups**: Manage sets of projects (e.g., "Full Stack") to watch or debug together.
+- **Status Tracking**: Visual indicators for running processes.
 
-1. **Open a .NET workspace** containing .csproj files
-2. **Click the .NET Toolkit icon** in the Activity Bar
-3. **Select "Publish" tab** to see available deployment profiles
-4. **Click the deploy button** 🚀 on any profile to start deployment
+### Deployment History
+
+- **Tracking**: Log of all deployments with status and duration.
+- **Organization**: Grouped by date (Today, Yesterday, etc.).
 
 ---
 
-## 📖 Usage
+## Installation
 
-### Publish View
+1. Download the latest `.vsix` from [Releases](https://github.com/alexnguyen03/dotnet-project-toolkit/releases).
+2. Open VS Code, press `Ctrl+Shift+P`, and run **Extensions: Install from VSIX**.
 
-The Publish view displays your solution structure with all available publish profiles:
+---
+
+## Quick Start
+
+1. **Open Workspace**: Open a folder with your .NET projects.
+2. **Access Toolkit**: Click the **.NET Toolkit** icon in the Activity Bar.
+3. **Deploy**: Expand a project, find a profile, and click the **Deploy** (rocket) icon.
+
+---
+
+## Usage Guide
+
+### 1. Publish Profiles
+
+The extension organizes profiles hierarchically:
 
 ```
-📦 Publish
+📦 .NET Project Toolkit
 ├── 📂 Server
-│   ├── 🌐 BudgetControl.Server.Api
-│   │   └── 📋 Profiles
-│   │       ├── 📄 uat-api [UAT] 🚀
-│   │       └── 📄 prod-api [PROD] ⚠️
-│   └── 🌐 BudgetControl.Server.Web
-│       └── 📋 Profiles
-│           ├── 📄 uat-web [UAT] 🚀
-│           └── 📄 prod-web [PROD] ⚠️
+│   ├── 🌐 MyApp.Api
+│   │   ├── 📄 DEV-API [DEV]
+│   │   ├── 📄 STAGING-API [STAGING]
+│   │   └── 📄 PROD-API [PROD]
 ```
 
-**To Deploy:**
+**Environment Badges:**
 
-1. Expand project folders to see publish profiles
-2. Click the 🚀 icon next to any profile
-3. For PROD deployments, confirm in the dialog
-4. Monitor progress in the notification
+- **DEV**: Development (Green)
+- **STAGING**: Staging (Blue)
+- **PROD**: Production (Red)
+
+### 2. Profile Management
+
+**Create Profile:**
+Right-click a project -> **Create Publish Profile**.
+
+- **Environments**: DEV, STAGING, PROD.
+- **Log Path**: Optional path to IIS stdout logs.
+
+**Edit Profile:**
+Click any profile to open the **Profile Info Panel**.
+
+- Modify URL, credentials, or settings.
+- Enable **Open in browser** or **Stdout logging**.
+
+### 3. Deployment
+
+**Deploy to Staging/Dev:**
+Click the **Deploy** icon next to the profile.
+
+**Deploy to Production:**
+Click **Deploy**. A confirmation dialog is required for safety.
+
+**Process:**
+Build -> Publish -> Deploy (MSDeploy) -> Verify -> Launch Browser.
+
+### 4. View Logs
+
+View IIS stdout logs directly within VS Code:
+
+1. Open a publish profile to view the **Profile Info Panel**.
+2. Scroll to **Deployment Options**.
+3. Ensure **Log Path** is set (e.g., `C:\inetpub\logs\LogFiles\W3SVC1`).
+4. Click the **View Logs** button.
+5. Logs are downloaded and displayed in the Output panel.
+
+### 5. Watch Management
+
+- **Start**: Click Play on a project or group.
+- **Groups**: Click `+` to create a group of projects to watch simultaneously.
+
+### 6. Debug Management
+
+- **Debug**: Click Debug icon on a project or group to attach debugger.
+- **Groups**: Create groups to debug microservices together.
+
+### 7. Deployment History
+
+View past deployments in the **History** view.
+
+- Shows status (Success/Failure) and duration.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-### Environment Variables
+**Settings (`Ctrl+,` -> search "dotnet toolkit"):**
 
-The extension uses OS environment variables for deployment authentication:
-
-#### Windows (PowerShell):
-
-```powershell
-[System.Environment]::SetEnvironmentVariable("DEPLOY_PWD", "your_uat_password", "User")
-[System.Environment]::SetEnvironmentVariable("DEPLOY_PWD_PROD", "your_prod_password", "User")
-```
-
-#### Linux/macOS (Bash/Zsh):
-
-```bash
-export DEPLOY_PWD="your_uat_password"
-export DEPLOY_PWD_PROD="your_prod_password"
-```
-
-### Extension Settings
-
-This extension contributes the following settings:
-
-- `dotnetToolkit.dotnetPath`: Path to dotnet CLI executable (default: `dotnet`)
-- `dotnetToolkit.deploymentTimeout`: Deployment timeout in seconds (default: `300`)
-- `dotnetToolkit.showNotifications`: Show deployment notifications (default: `true`)
-- `dotnetToolkit.confirmProductionDeploy`: Confirm before deploying to production (default: `true`)
+| Setting                             | Default  | Description                                                   |
+| :---------------------------------- | :------- | :------------------------------------------------------------ |
+| `dotnetToolkit.passwordStorage`     | `secret` | Use `secret` (encrypted) or `envvar` (environment variables). |
+| `dotnetToolkit.openBrowserOnDeploy` | `true`   | Open browser after deployment.                                |
+| `dotnetWorkspace.dotnetPath`        | `dotnet` | Path to dotnet CLI.                                           |
 
 ---
 
-## 🎨 Screenshots
+## Security
 
-### Multi-View Panel
-
-![Multi-View Panel](media/multi-view-panel.png)
-
-### Publish View
-
-![Publish View](media/publish-view.png)
-
-### Deploy Progress
-
-![Deploy Progress](media/deploy-progress.png)
+- **Credentials**: Stored using OS-secure storage (Credential Manager/Keychain) by default.
+- **Production Safety**: Explicit confirmation required for PROD deployments.
 
 ---
 
-## 📝 Commands
+## Troubleshooting
 
-The extension provides the following commands:
-
-- `.NET Toolkit: Deploy to UAT - API`
-- `.NET Toolkit: Deploy to UAT - Client`
-- `.NET Toolkit: Deploy to Production - API`
-- `.NET Toolkit: Deploy to Production - Client`
-- `.NET Toolkit: Refresh Publish Profiles`
-- `.NET Toolkit: Configure Environment Variables`
-
----
-
-## 🗺️ Roadmap
-
-### v1.0 - Core Deployment
-
-- [x] Multi-view panel structure
-- [x] Publish view with project hierarchy
-- [x] Mock deployment workflow
-- [ ] Real .pubxml file scanning
-- [ ] Actual dotnet publish execution
-- [ ] Environment variable validation
-
-### v1.1 - Watch & Debug
-
-- [ ] Watch view implementation
-- [ ] Multiple watch instances
-- [ ] Debug configuration management
-- [ ] Auto-attach debugger to watch
-
-### v1.2 - History & Advanced
-
-- [ ] Deployment history tracking
-- [ ] Rollback functionality
-- [ ] Performance monitoring
-
----
-
-## 🛠️ Development
-
-### Prerequisites
-
-- Node.js 20+
-- npm 10+
-- VS Code 1.108.1+
-
-### Build & Test
-
-```bash
-# Install dependencies
-npm install
-
-# Compile TypeScript
-npm run compile
-
-# Watch for changes
-npm run watch
-
-# Run tests
-npm test
-
-# Package extension
-npm run package
-```
-
-### Project Structure
-
-```
-src/
-├── extension.ts              # Main entry point
-├── ui/
-│   ├── publish/             # Publish view (implemented)
-│   ├── watch/               # Watch view (placeholder)
-│   ├── debug/               # Debug view (placeholder)
-│   └── history/             # History view (placeholder)
-├── deployment/              # Deployment logic
-├── models/                  # Data models
-└── utils/                   # Utilities
-```
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details
+- **Project Not Found**: Ensure `.csproj` builds successfully. Refresh the view.
+- **Credentials**: If saving fails, check if your OS Keychain is unlocked.
+- **Logs**: If logs are empty, verify the **Log Path** on the server and ensure the user has read permissions.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are always welcome!
+
+- **Report Bugs**: Open an issue to report bugs or request features.
+- **Submit PRs**: Fork the repo, simplify your workflow, and submit a Pull Request.
 
 ---
 
-## 📞 Support
+## ☕ Support Me
 
-- **Issues**: [GitHub Issues](https://github.com/yourpublisher/dotnet-project-toolkit/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourpublisher/dotnet-project-toolkit/discussions)
+If you find this extension helpful, consider supporting its development!
 
----
+- [Ko-fi](https://ko-fi.com/alexnguyen03)
+- [Paypal](https://paypal.me/alexnguyeen03)
 
 **Made with ❤️ for .NET developers**

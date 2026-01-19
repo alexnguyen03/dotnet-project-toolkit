@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 import { ProjectScanner } from '../../utils/ProjectScanner';
-import { ProjectInfo, PublishProfileInfo } from '../../models/ProjectModels';
+import { ProjectInfo, PublishProfileInfo, DeployEnvironment } from '../../models/ProjectModels';
 
 export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeItem> {
-	private _onDidChangeTreeData: vscode.EventEmitter<PublishTreeItem | undefined | null | void> = new vscode.EventEmitter<PublishTreeItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<PublishTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
-	
+	private _onDidChangeTreeData: vscode.EventEmitter<PublishTreeItem | undefined | null | void> =
+		new vscode.EventEmitter<PublishTreeItem | undefined | null | void>();
+	readonly onDidChangeTreeData: vscode.Event<PublishTreeItem | undefined | null | void> =
+		this._onDidChangeTreeData.event;
+
 	private scanner: ProjectScanner;
 
 	constructor(private workspaceRoot: string | undefined) {
@@ -28,14 +30,14 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 					'No workspace folder open',
 					vscode.TreeItemCollapsibleState.None,
 					'placeholder'
-				)
+				),
 			];
 		}
 
 		if (!element) {
 			// Root level - scan workspace
 			const workspace = await this.scanner.scanWorkspace(this.workspaceRoot);
-			
+
 			if (workspace.projects.length === 0) {
 				return [
 					new PublishTreeItem(
@@ -44,15 +46,18 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 						'placeholder',
 						undefined,
 						'Open a workspace with .csproj files to see projects'
-					)
+					),
 				];
 			}
 
 			// Group by project type or show flat list
-			const apiProjects = workspace.projects.filter(p => p.projectType === 'api');
-			const webProjects = workspace.projects.filter(p => p.projectType === 'web');
-			const otherProjects = workspace.projects.filter(p => 
-				p.projectType !== 'api' && p.projectType !== 'web' && p.projectType !== 'library'
+			const apiProjects = workspace.projects.filter((p) => p.projectType === 'api');
+			const webProjects = workspace.projects.filter((p) => p.projectType === 'web');
+			const otherProjects = workspace.projects.filter(
+				(p) =>
+					p.projectType !== 'api' &&
+					p.projectType !== 'web' &&
+					p.projectType !== 'library'
 			);
 
 			const items: PublishTreeItem[] = [];
@@ -63,7 +68,9 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 				items.push(
 					new PublishTreeItem(
 						project.name,
-						hasProfiles ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+						hasProfiles
+							? vscode.TreeItemCollapsibleState.Collapsed
+							: vscode.TreeItemCollapsibleState.None,
 						'project',
 						project
 					)
@@ -76,7 +83,7 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 		if (element.contextValue === 'project' && element.projectInfo) {
 			// Project level - show profiles or placeholder
 			const project = element.projectInfo;
-			
+
 			if (project.profiles.length === 0) {
 				return [
 					new PublishTreeItem(
@@ -85,22 +92,33 @@ export class PublishTreeProvider implements vscode.TreeDataProvider<PublishTreeI
 						'placeholder',
 						undefined,
 						'Create profiles in Visual Studio or add .pubxml files to Properties/PublishProfiles/'
-					)
+					),
 				];
 			}
 
 			// Show publish profiles
-			return project.profiles.map(profile => 
-				new PublishTreeItem(
+			console.log('[PublishTreeProvider] Creating profile items for project:', project.name);
+			console.log('[PublishTreeProvider] Project csprojPath:', project.csprojPath);
+			console.log('[PublishTreeProvider] Number of profiles:', project.profiles.length);
+
+			return project.profiles.map((profile) => {
+				const item = new PublishTreeItem(
 					profile.name,
 					vscode.TreeItemCollapsibleState.None,
 					'publishProfile',
-					undefined,
+					project, // Pass project info for deployment
 					undefined,
 					profile,
 					project.name // Pass project name for password var naming
-				)
-			);
+				);
+				console.log(
+					'[PublishTreeProvider] Created item for profile:',
+					profile.name,
+					'has projectInfo:',
+					!!item.projectInfo
+				);
+				return item;
+			});
 		}
 
 		return [];
@@ -111,7 +129,14 @@ export class PublishTreeItem extends vscode.TreeItem {
 	public readonly projectInfo?: ProjectInfo;
 	public readonly profileInfo?: PublishProfileInfo;
 	public readonly projectName?: string;
-	
+	public readonly csprojPath?: string; // Store directly for serialization
+
+	/** Get the .csproj path for deployment */
+	get projectPath(): string | undefined {
+		// Prefer direct csprojPath (survives serialization)
+		return this.csprojPath || this.projectInfo?.csprojPath;
+	}
+
 	constructor(
 		public readonly label: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
@@ -122,9 +147,41 @@ export class PublishTreeItem extends vscode.TreeItem {
 		projectName?: string
 	) {
 		super(label, collapsibleState);
+
+		// Debug logging
+		if (contextValue === 'publishProfile') {
+			console.log('[PublishTreeItem.constructor] Creating profile item:', label);
+			console.log('[PublishTreeItem.constructor] Received projectInfo:', !!projectInfo);
+			console.log(
+				'[PublishTreeItem.constructor] projectInfo.csprojPath:',
+				projectInfo?.csprojPath
+			);
+		}
+
 		this.projectInfo = projectInfo;
 		this.profileInfo = profileInfo;
 		this.projectName = projectName;
+
+		// CRITICAL: Store csprojPath directly to survive VS Code serialization
+		// VS Code may serialize/deserialize tree items, losing complex objects
+		this.csprojPath = projectInfo?.csprojPath;
+
+		// Verify assignment
+		if (contextValue === 'publishProfile') {
+			console.log(
+				'[PublishTreeItem.constructor] After assignment - this.projectInfo:',
+				!!this.projectInfo
+			);
+			console.log(
+				'[PublishTreeItem.constructor] After assignment - this.csprojPath:',
+				this.csprojPath
+			);
+			console.log(
+				'[PublishTreeItem.constructor] After assignment - this.projectPath:',
+				this.projectPath
+			);
+		}
+
 		if (description) {
 			this.description = description;
 		}
@@ -149,7 +206,7 @@ export class PublishTreeItem extends vscode.TreeItem {
 						default:
 							this.iconPath = new vscode.ThemeIcon('file-code');
 					}
-					
+
 					// Show profile count in description
 					const profileCount = this.projectInfo.profiles.length;
 					if (profileCount > 0) {
@@ -161,25 +218,33 @@ export class PublishTreeItem extends vscode.TreeItem {
 				if (this.profileInfo) {
 					// Environment-specific colored icons
 					const env = this.profileInfo.environment;
-					if (env === 'prod') {
-						this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
-						this.description = '🔴 PROD';
-					} else if (env === 'uat') {
-						this.iconPath = new vscode.ThemeIcon('beaker', new vscode.ThemeColor('charts.blue'));
-						this.description = '🔵 UAT';
-					} else if (env === 'dev') {
-						this.iconPath = new vscode.ThemeIcon('code', new vscode.ThemeColor('charts.green'));
-						this.description = '🟢 DEV';
+					if (env === DeployEnvironment.Production) {
+						this.iconPath = new vscode.ThemeIcon(
+							'warning',
+							new vscode.ThemeColor('errorForeground')
+						);
+						this.description = 'PRODUCTION';
+					} else if (env === DeployEnvironment.Staging) {
+						this.iconPath = new vscode.ThemeIcon(
+							'beaker',
+							new vscode.ThemeColor('charts.blue')
+						);
+						this.description = 'STAGING';
+					} else if (env === DeployEnvironment.Development) {
+						this.iconPath = new vscode.ThemeIcon(
+							'code',
+							new vscode.ThemeColor('charts.green')
+						);
+						this.description = 'DEV';
 					} else {
 						this.iconPath = new vscode.ThemeIcon('circle-outline');
-						this.description = '⚪';
 					}
-					
+
 					// Click to open profile info panel
 					this.command = {
 						command: 'dotnet-project-toolkit.profileInfo',
 						title: 'Show Profile Info',
-						arguments: [this]
+						arguments: [this],
 					};
 				}
 				break;
