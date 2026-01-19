@@ -480,6 +480,11 @@
           "type": "boolean",
           "default": true,
           "description": "Group deployment history by date (Today, Yesterday, This Week, Older)"
+        },
+        "dotnetToolkit.openBrowserOnDeploy": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open browser after successful deployment (if site URL is available)"
         }
       }
     }

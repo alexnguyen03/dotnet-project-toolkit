@@ -229,7 +229,8 @@ export class ProfileInfoPanel {
             publishUrl: '',
             siteName: '',
             siteUrl: '',
-            userName: ''
+            userName: '',
+            openBrowserOnDeploy: true
         };
 
         const instance = new ProfileInfoPanel(
@@ -264,7 +265,7 @@ export class ProfileInfoPanel {
             } else {
                 projectInfo = {
                     name: this.currentProjectName,
-                    projectDir: this.currentProfileInfo.path.replace(/[\\\/]Properties[\\\/]PublishProfiles[\\\/][^\\\/]+$/, ''),
+                    projectDir: this.currentProfileInfo.path.replace(/[\\\/]Properties[\\\/]PublishProfiles[\\\/][^\\\/]+$/i, ''),
                     csprojPath: '',
                     projectType: 'unknown',
                     profiles: []
@@ -272,7 +273,7 @@ export class ProfileInfoPanel {
             }
 
             // Save profile (create or update)
-            const profilePath = await this.profileService.create(projectInfo, data);
+            const profilePath = await this.profileService.create(projectInfo, data, !this.isCreateMode);
 
             if (profilePath) {
                 // Save password if provided
@@ -284,7 +285,7 @@ export class ProfileInfoPanel {
                 const message = this.isCreateMode
                     ? `✅ Profile "${data.profileName}" created successfully!`
                     : `✅ Profile "${data.profileName}" saved!`;
-                vscode.window.showInformationMessage(message);
+                vscode.window.setStatusBarMessage(message, 5000);
 
                 // Reload profile info from disk
                 // Update current profile info with saved data immediately to ensure UI consistency
@@ -298,7 +299,8 @@ export class ProfileInfoPanel {
                     publishUrl: data.publishUrl,
                     siteName: data.siteName,
                     siteUrl: data.siteUrl || '',
-                    userName: data.username
+                    userName: data.username,
+                    openBrowserOnDeploy: data.openBrowserOnDeploy
                 };
 
                 this.panel.title = `${this.currentProjectName} / ${this.currentProfileInfo.fileName}`;
@@ -334,6 +336,7 @@ export class ProfileInfoPanel {
             siteName: profile.siteName,
             siteUrl: profile.siteUrl,
             username: profile.userName,
+            openBrowserOnDeploy: profile.openBrowserOnDeploy,
             passwordKey: passwordKey,
             isDeploying: this._isDeploying || this.isDeploying(profile.fileName),
             isCreateMode: this.isCreateMode

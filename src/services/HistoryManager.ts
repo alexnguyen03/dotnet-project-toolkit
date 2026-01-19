@@ -1,65 +1,44 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { DeploymentRecord } from '../models/DeploymentRecord';
 
 interface HistoryFileContent {
-    DeploymentHistory: {
-        Deployments: {
-            DeploymentRecord: DeploymentRecord[];
-        }
-    }
+    version: number;
+    records: DeploymentRecord[];
 }
 
 export class HistoryManager {
     private historyCache: DeploymentRecord[] = [];
-    private readonly parser: XMLParser;
-    private readonly builder: XMLBuilder;
+    private readonly STORAGE_FILE = 'deployment-history.json';
+    private readonly CURRENT_VERSION = 1;
 
     constructor(private readonly context: vscode.ExtensionContext) {
-        this.parser = new XMLParser({
-            ignoreAttributes: false,
-            parseTagValue: true
-        });
-
-        this.builder = new XMLBuilder({
-            ignoreAttributes: false,
-            format: true,
-            indentBy: '  '
-        });
-
         // Initial load
         this.refreshHistory();
     }
 
     /**
-     * Add a new deployment record to history file
+     * Add a new deployment record to history
      */
     async addDeployment(record: Omit<DeploymentRecord, 'id'>, profilePath: string): Promise<string> {
         const id = Math.random().toString(36).substring(2, 9);
         const newRecord: DeploymentRecord = { ...record, id };
 
-        // 1. Determine history file path
-        const historyPath = this.getHistoryFilePath(profilePath);
+        // 1. Read existing
+        await this.loadFromStorage();
+        
+        // 2. Add new record
+        this.historyCache.unshift(newRecord);
 
-        // 2. Read existing history for this profile
-        let profileHistory = await this.readHistoryFile(historyPath);
-
-        // 3. Add new record
-        profileHistory.unshift(newRecord);
-
-        // 4. Prune if needed (per file limit)
+        // 3. Prune if needed
         const maxEntries = vscode.workspace.getConfiguration('dotnetToolkit').get<number>('historyMaxEntries', 50);
-        if (profileHistory.length > maxEntries) {
-            profileHistory = profileHistory.slice(0, maxEntries);
+        if (this.historyCache.length > maxEntries) {
+            this.historyCache = this.historyCache.slice(0, maxEntries);
         }
 
-        // 5. Save back to file
-        await this.writeHistoryFile(historyPath, profileHistory);
-
-        // 6. Refresh global cache
-        await this.refreshHistory();
+        // 4. Save
+        await this.saveToStorage();
 
         return id;
     }
@@ -68,19 +47,17 @@ export class HistoryManager {
      * Update an existing deployment record
      */
     async updateDeployment(id: string, updates: Partial<DeploymentRecord>, profilePath: string): Promise<void> {
-        const historyPath = this.getHistoryFilePath(profilePath);
-        let profileHistory = await this.readHistoryFile(historyPath);
+        await this.loadFromStorage();
 
-        const index = profileHistory.findIndex(r => r.id === id);
+        const index = this.historyCache.findIndex(r => r.id === id);
         if (index !== -1) {
-            profileHistory[index] = { ...profileHistory[index], ...updates };
-            await this.writeHistoryFile(historyPath, profileHistory);
-            await this.refreshHistory();
+            this.historyCache[index] = { ...this.historyCache[index], ...updates };
+            await this.saveToStorage();
         }
     }
 
     /**
-     * Get all deployment records from cache (aggregated from all files)
+     * Get all deployment records from cache
      */
     getAllHistory(): DeploymentRecord[] {
         return this.historyCache;
@@ -94,103 +71,92 @@ export class HistoryManager {
     }
 
     /**
-     * Clear all history (deletes all .pubhisxml files)
+     * Clear all history
      */
     async clearHistory(): Promise<void> {
-        const files = await vscode.workspace.findFiles('**/*.pubhisxml');
-        for (const file of files) {
-            try {
-                await fs.promises.unlink(file.fsPath);
-            } catch (error) {
-                console.error(`Failed to delete history file: ${file.fsPath}`, error);
-            }
-        }
-        await this.refreshHistory();
+        this.historyCache = [];
+        await this.saveToStorage();
     }
 
     /**
-     * Remove a single entry by ID (Search all files)
+     * Remove a single entry by ID
      */
     async clearEntry(id: string): Promise<void> {
-        const files = await vscode.workspace.findFiles('**/*.pubhisxml');
-
-        for (const file of files) {
-            const history = await this.readHistoryFile(file.fsPath);
-            const index = history.findIndex(r => r.id === id);
-
-            if (index !== -1) {
-                history.splice(index, 1);
-                // If empty, maybe delete file? For now just save empty list
-                if (history.length === 0) {
-                    await fs.promises.unlink(file.fsPath);
-                } else {
-                    await this.writeHistoryFile(file.fsPath, history);
-                }
-                break; // Found and deleted
-            }
+        await this.loadFromStorage();
+        const index = this.historyCache.findIndex(r => r.id === id);
+        if (index !== -1) {
+            this.historyCache.splice(index, 1);
+            await this.saveToStorage();
         }
-        await this.refreshHistory();
     }
 
     /**
-     * Refresh the in-memory cache by scanning all .pubhisxml files
+     * Refresh the in-memory cache
      */
     async refreshHistory(): Promise<void> {
-        const files = await vscode.workspace.findFiles('**/*.pubhisxml');
-        let allHistory: DeploymentRecord[] = [];
+        await this.loadFromStorage();
+    }
 
-        for (const file of files) {
-            const fileHistory = await this.readHistoryFile(file.fsPath);
-            allHistory = allHistory.concat(fileHistory);
+    private async ensureStorageDir(): Promise<void> {
+        if (this.context.storageUri) {
+            try {
+                await fs.promises.mkdir(this.context.storageUri.fsPath, { recursive: true });
+            } catch (error) {
+                // Ignore if exists
+            }
         }
-
-        // Sort by startTime descending
-        allHistory.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-
-        this.historyCache = allHistory;
     }
 
-    private getHistoryFilePath(profilePath: string): string {
-        // profilePath is like /path/to/profile.pubxml
-        // historyPath will be /path/to/profile.pubhisxml
-        const parsed = path.parse(profilePath);
-        return path.join(parsed.dir, `${parsed.name}.pubhisxml`);
+    private getHistoryFilePath(): string | undefined {
+        if (!this.context.storageUri) {
+            return undefined;
+        }
+        return path.join(this.context.storageUri.fsPath, this.STORAGE_FILE);
     }
 
-    private async readHistoryFile(filePath: string): Promise<DeploymentRecord[]> {
-        if (!fs.existsSync(filePath)) {
-            return [];
+    private async loadFromStorage(): Promise<void> {
+        const filePath = this.getHistoryFilePath();
+        if (!filePath || !fs.existsSync(filePath)) {
+            this.historyCache = [];
+            return;
         }
 
         try {
-            const xmlContent = await fs.promises.readFile(filePath, 'utf-8');
-            const result = this.parser.parse(xmlContent);
-
-            // Handle XML parsing structure
-            const deployments = result?.DeploymentHistory?.Deployments?.DeploymentRecord;
-
-            if (Array.isArray(deployments)) {
-                return deployments;
-            } else if (deployments) {
-                return [deployments]; // Single item
+            const content = await fs.promises.readFile(filePath, 'utf-8');
+            const data = JSON.parse(content) as HistoryFileContent;
+            
+            // Handle migration if we change version later
+            if (data && Array.isArray(data.records)) {
+                this.historyCache = data.records;
+            } else {
+                this.historyCache = [];
             }
-            return [];
+
+            // Sort by startTime descending
+            this.historyCache.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
         } catch (error) {
-            console.error(`Error reading history file ${filePath}:`, error);
-            return [];
+            console.error('Failed to load history:', error);
+            this.historyCache = [];
         }
     }
 
-    private async writeHistoryFile(filePath: string, history: DeploymentRecord[]): Promise<void> {
-        const xmlObj: HistoryFileContent = {
-            DeploymentHistory: {
-                Deployments: {
-                    DeploymentRecord: history
-                }
-            }
+    private async saveToStorage(): Promise<void> {
+        const filePath = this.getHistoryFilePath();
+        if (!filePath) {
+            return;
+        }
+
+        await this.ensureStorageDir();
+
+        const data: HistoryFileContent = {
+            version: this.CURRENT_VERSION,
+            records: this.historyCache
         };
 
-        const xmlContent = this.builder.build(xmlObj);
-        await fs.promises.writeFile(filePath, xmlContent, 'utf-8');
+        try {
+            await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+        } catch (error) {
+            console.error('Failed to save history:', error);
+        }
     }
 }

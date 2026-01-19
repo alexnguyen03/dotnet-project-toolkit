@@ -1,111 +1,151 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{TITLE}}</title>
     {{CSP_META}}
-    <link rel="stylesheet" href="{{CSS_URI}}">
-</head>
+    <link rel="stylesheet" href="{{CSS_URI}}" />
+  </head>
 
-<body>
+  <body>
     <div class="header">
-        <div class="header-content">
-            <!-- LEFT COLUMN -->
-            <div class="header-left">
-                <!-- Row 1: Edit Profile : Profile Name -->
-                <div class="header-title-row">
-                    <span id="modeHeader" class="mode-text"></span>
-                    <span>:</span>
-                    <span id="displayProfileName" class="profile-name-text"></span>
-                </div>
-                <!-- Row 2: Project Name -->
-                <div class="project-name-row">
-                    <span id="displayProjectName"></span>
-                </div>
-            </div>
-
-            <!-- RIGHT COLUMN -->
-            <div class="header-right">
-                <!-- Row 1: Brand -->
-                <div class="brand-name">.NET Project Toolkit</div>
-                <!-- Row 2: Badge & Buttons -->
-                <div class="toolbar-actions">
-                    <span id="envBadge" class="badge"></span>
-                    <div id="deployBtnContainer">
-                        <button type="button" class="btn-success" id="btnDeploy" title="Deploy to this environment">
-                            Deploy
-                        </button>
-                    </div>
-                </div>
-            </div>
+      <div class="header-content">
+        <!-- LEFT COLUMN -->
+        <div class="header-left">
+          <!-- Row 1: Edit Profile : Profile Name -->
+          <div class="header-title-row">
+            <span id="modeHeader" class="mode-text"></span>
+            <span>:</span>
+            <span id="displayProfileName" class="profile-name-text"></span>
+          </div>
+          <!-- Row 2: Project Name -->
+          <div class="project-name-row">
+            <span id="displayProjectName"></span>
+          </div>
         </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="header-right">
+          <!-- Row 1: Brand -->
+          <div class="brand-name">.NET Project Toolkit</div>
+          <!-- Row 2: Badge & Buttons -->
+          <div class="toolbar-actions">
+            <span id="envBadge" class="badge"></span>
+            <div id="deployBtnContainer">
+              <button
+                type="button"
+                class="btn-success"
+                id="btnDeploy"
+                title="Deploy to this environment"
+              >
+                Deploy
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <form id="profileForm">
+      <div class="form-group">
+        <label>Environment</label>
+        <select id="environment">
+          <option value="staging">Staging</option>
+          <option value="production">Production ⚠️</option>
+          <option value="dev">Development</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Publish URL (IP or Domain)</label>
+        <input type="text" id="publishUrl" placeholder="192.168.10.3" />
+      </div>
+
+      <!-- Site Name & Site URL split row -->
+      <div class="form-row-split">
+        <div class="form-group">
+          <label>IIS Site Name</label>
+          <input
+            type="text"
+            id="siteName"
+            placeholder="TS_BUDGETCTRL_API_UAT"
+          />
+        </div>
 
         <div class="form-group">
-            <label>Environment</label>
-            <select id="environment">
-                <option value="staging">Staging</option>
-                <option value="production">Production ⚠️</option>
-                <option value="dev">Development</option>
-            </select>
+          <label>Site URL (for browser launch)</label>
+          <input type="text" id="siteUrl" placeholder="https://example.com" />
+          <div
+            class="checkbox-container"
+            style="
+              margin-top: 8px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <input
+              type="checkbox"
+              id="openBrowserOnDeploy"
+              style="width: auto; margin: 0"
+            />
+            <label
+              for="openBrowserOnDeploy"
+              style="
+                margin: 0;
+                font-size: 0.9em;
+                font-weight: normal;
+                cursor: pointer;
+              "
+              >Open in browser after deploy</label
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Username & Password split row -->
+      <div class="form-row-split">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="namnh" />
         </div>
 
         <div class="form-group">
-            <label>Publish URL (IP or Domain)</label>
-            <input type="text" id="publishUrl" placeholder="192.168.10.3">
+          <label>Password</label>
+          <input
+            type="password"
+            id="password"
+            placeholder="Leave empty to keep existing"
+          />
+          <div class="hint">Only enter if you want to change the password</div>
         </div>
+      </div>
 
-        <!-- Site Name & Site URL split row -->
-        <div class="form-row-split">
-            <div class="form-group">
-                <label>IIS Site Name</label>
-                <input type="text" id="siteName" placeholder="TS_BUDGETCTRL_API_UAT">
-            </div>
-
-            <div class="form-group">
-                <label>Site URL (for browser launch)</label>
-                <input type="text" id="siteUrl" placeholder="https://example.com">
-            </div>
+      <div class="actions">
+        <div class="actions-left">
+          <button type="submit" class="btn-primary">💾 Save Changes</button>
+          <button type="button" class="btn-secondary" id="btnCancel">
+            Cancel
+          </button>
         </div>
-
-        <!-- Username & Password split row -->
-        <div class="form-row-split">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="username" placeholder="namnh">
-            </div>
-
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="password" placeholder="Leave empty to keep existing">
-                <div class="hint">Only enter if you want to change the password</div>
-            </div>
-        </div>
-
-        <div class="actions">
-            <div class="actions-left">
-                <button type="submit" class="btn-primary">💾 Save Changes</button>
-                <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
-            </div>
-            <button type="button" class="btn-danger" id="btnDelete" title="Delete this profile">
-                🗑️ Delete
-            </button>
-        </div>
+        <button
+          type="button"
+          class="btn-danger"
+          id="btnDelete"
+          title="Delete this profile"
+        >
+          🗑️ Delete
+        </button>
+      </div>
     </form>
 
     <div class="history-section">
-        <h2>📜 Publish History</h2>
-        <!-- History content injected here -->
-        <div id="historyContainer">
-            {{HISTORY_CONTENT}}
-        </div>
+      <h2>📜 Publish History</h2>
+      <!-- History content injected here -->
+      <div id="historyContainer">{{HISTORY_CONTENT}}</div>
     </div>
 
     <script nonce="{{NONCE}}" src="{{JS_URI}}"></script>
-</body>
-
+  </body>
 </html>

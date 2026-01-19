@@ -56,6 +56,9 @@ function init(data) {
     const userInput = document.getElementById('username');
     if (userInput) userInput.value = data.username || '';
 
+    const openBrowserCheckbox = document.getElementById('openBrowserOnDeploy');
+    if (openBrowserCheckbox) openBrowserCheckbox.checked = data.openBrowserOnDeploy !== false; // Default true if undefined
+
     // Handle create mode vs edit mode
     // Styles handled by CSS now
 
@@ -263,7 +266,8 @@ if (form) {
             siteName: siteName,
             siteUrl: document.getElementById('siteUrl').value || undefined,
             username: username,
-            password: document.getElementById('password').value || 'KEEP_EXISTING'
+            password: document.getElementById('password').value || 'KEEP_EXISTING',
+            openBrowserOnDeploy: document.getElementById('openBrowserOnDeploy').checked
         };
 
         vscode.postMessage({ command: 'save', data: submitData });
@@ -281,6 +285,7 @@ window.resetForm = function () {
     document.getElementById('siteUrl').value = data.siteUrl || '';
     document.getElementById('username').value = data.username || '';
     document.getElementById('password').value = '';
+    document.getElementById('openBrowserOnDeploy').checked = data.openBrowserOnDeploy !== false;
     clearErrors();
 }
 

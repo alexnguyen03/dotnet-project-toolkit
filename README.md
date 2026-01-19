@@ -135,6 +135,9 @@ This extension contributes the following settings:
 - `dotnetToolkit.confirmProductionDeploy`: Confirm before deploying to production (default: `true`)
 - `dotnetToolkit.historyMaxEntries`: Maximum deployment history entries (default: `50`)
 - `dotnetToolkit.historyGroupByDate`: Group history by date (default: `true`)
+- `dotnetToolkit.openBrowserOnDeploy`: Automatically open browser after successful deployment (default: `true`)
+
+📖 **See [BROWSER_OPEN.md](BROWSER_OPEN.md) for details on the auto-open browser feature.**
 
 ---
 

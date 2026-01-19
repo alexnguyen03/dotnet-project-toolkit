@@ -152,8 +152,27 @@ export class DeployProfileCommand implements ICommand {
                 duration: endTime.getTime() - startTime.getTime()
             }, profile.path);
 
-            vscode.window.showInformationMessage(`✅ ${profile.name} deployed successfully!`);
-            this.outputChannel.appendLine(`[Success] Deployment for ${profile.name} finished.`);
+            // 5. Open browser if enabled and URL is available
+            const config = vscode.workspace.getConfiguration('dotnetToolkit');
+            const globalOpenBrowser = config.get<boolean>('openBrowserOnDeploy', true);
+            const openBrowser = profile.openBrowserOnDeploy ?? globalOpenBrowser;
+            
+            if (openBrowser && profile.siteUrl) {
+                this.outputChannel.appendLine(`[Browser] Opening site: ${profile.siteUrl}`);
+                try {
+                    await vscode.env.openExternal(vscode.Uri.parse(profile.siteUrl));
+                    vscode.window.showInformationMessage(`✅ ${profile.name} deployed. Opened ${profile.siteUrl}`);
+                    this.outputChannel.appendLine(`[Browser] Opened: ${profile.siteUrl}`);
+                } catch (err) {
+                    this.outputChannel.appendLine(`[Browser] Failed to open: ${err}`);
+                    vscode.window.showInformationMessage(`✅ ${profile.name} deployed successfully!`);
+                }
+            } else {
+                if (openBrowser && !profile.siteUrl) {
+                    this.outputChannel.appendLine(`[Browser] No site URL configured for this profile`);
+                }
+                vscode.window.showInformationMessage(`✅ ${profile.name} deployed successfully!`);
+            }
 
         } catch (error: any) {
             // 5. Update history with failure

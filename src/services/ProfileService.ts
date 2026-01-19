@@ -16,6 +16,7 @@ export interface ProfileWizardData {
     username: string;
     password: string;
     siteUrl?: string;
+    openBrowserOnDeploy?: boolean;
 }
 
 /**
@@ -23,7 +24,7 @@ export interface ProfileWizardData {
  * Handles all profile-related operations
  */
 export interface IProfileService {
-    create(projectInfo: ProjectInfo, data: ProfileWizardData): Promise<string | null>;
+    create(projectInfo: ProjectInfo, data: ProfileWizardData, overwrite?: boolean): Promise<string | null>;
     delete(profileInfo: PublishProfileInfo): Promise<boolean>;
     parse(pubxmlPath: string): PublishProfileInfo | null;
     detectTargetFramework(csprojPath: string): Promise<string>;
@@ -43,10 +44,12 @@ export class ProfileService implements IProfileService {
         this.xmlParser = new XMLParser({
             ignoreAttributes: false,
             attributeNamePrefix: '@_',
+            parseTagValue: true, // Attempt to parse values (numbers, booleans)
+            trimValues: true
         });
     }
 
-    async create(projectInfo: ProjectInfo, data: ProfileWizardData): Promise<string | null> {
+    async create(projectInfo: ProjectInfo, data: ProfileWizardData, overwrite: boolean = false): Promise<string | null> {
         try {
             // Detect .NET version
             const targetFramework = await this.detectTargetFramework(projectInfo.csprojPath);
@@ -55,7 +58,7 @@ export class ProfileService implements IProfileService {
             const content = this.generatePubxmlContent(data, targetFramework);
 
             // Save file
-            const pubxmlPath = await this.savePubxmlFile(projectInfo, data.profileName, content);
+            const pubxmlPath = await this.savePubxmlFile(projectInfo, data.profileName, content, overwrite);
             if (!pubxmlPath) {
                 return null;
             }
@@ -95,11 +98,40 @@ export class ProfileService implements IProfileService {
 
             const content = fs.readFileSync(pubxmlPath, 'utf-8');
             const parsed = this.xmlParser.parse(content);
-            const props = parsed?.Project?.PropertyGroup;
+            let props = parsed?.Project?.PropertyGroup;
+            if (Array.isArray(props)) {
+                // Find group with WebPublishMethod or fallback to first
+                props = props.find((p: any) => p.WebPublishMethod) || props[0];
+            }
 
             const fileName = path.basename(pubxmlPath, '.pubxml');
             const envName = props?.EnvironmentName;
             const environment = this.detectEnvironment(envName, fileName);
+
+            // Determine openBrowserOnDeploy:
+            // - If tag missing: undefined (falls back to global)
+            // - If 'true': true
+            // - If 'false': false
+            if (props) {
+                 // Debug props structure
+                 this.log(`[Parse] Props keys: ${JSON.stringify(Object.keys(props))}`);
+            }
+
+            let openBrowserOnDeploy: boolean | undefined = undefined;
+            if (props?.LaunchSiteAfterPublish !== undefined) {
+                 const val = props.LaunchSiteAfterPublish;
+                 this.log(`[Parse] ${fileName}: LaunchSiteAfterPublish = ${val} (type: ${typeof val})`);
+                 
+                 if (typeof val === 'boolean') {
+                     openBrowserOnDeploy = val;
+                 } else if (typeof val === 'string') {
+                     const lower = val.toLowerCase();
+                     if (lower === 'true') openBrowserOnDeploy = true;
+                     if (lower === 'false') openBrowserOnDeploy = false;
+                 }
+            } else {
+                 this.log(`[Parse] ${fileName}: LaunchSiteAfterPublish is missing/undefined`);
+            }
 
             return {
                 name: this.formatDisplayName(fileName, environment),
@@ -109,6 +141,10 @@ export class ProfileService implements IProfileService {
                 isProduction: environment === DeployEnvironment.Production,
                 publishUrl: props?.MSDeployServiceURL || props?.PublishUrl,
                 publishMethod: props?.WebPublishMethod,
+                siteName: props?.DeployIisAppPath,
+                siteUrl: props?.SiteUrlToLaunchAfterPublish,
+                userName: props?.UserName,
+                openBrowserOnDeploy
             };
         } catch (error) {
             this.log(`Error parsing ${pubxmlPath}: ${error}`);
@@ -145,7 +181,7 @@ export class ProfileService implements IProfileService {
 <Project>
   <PropertyGroup>
     <WebPublishMethod>MSDeploy</WebPublishMethod>
-    <LaunchSiteAfterPublish>true</LaunchSiteAfterPublish>
+    <LaunchSiteAfterPublish>${data.openBrowserOnDeploy !== false}</LaunchSiteAfterPublish>
     <LastUsedBuildConfiguration>Release</LastUsedBuildConfiguration>
     <LastUsedPlatform>Any CPU</LastUsedPlatform>
     <SiteUrlToLaunchAfterPublish>${siteUrl}</SiteUrlToLaunchAfterPublish>
@@ -169,7 +205,7 @@ export class ProfileService implements IProfileService {
 `;
     }
 
-    private async savePubxmlFile(projectInfo: ProjectInfo, profileName: string, content: string): Promise<string | null> {
+    private async savePubxmlFile(projectInfo: ProjectInfo, profileName: string, content: string, overwrite: boolean = false): Promise<string | null> {
         const dir = path.join(projectInfo.projectDir, 'Properties', 'PublishProfiles');
 
         if (!fs.existsSync(dir)) {
@@ -178,12 +214,12 @@ export class ProfileService implements IProfileService {
 
         const filePath = path.join(dir, `${profileName}.pubxml`);
 
-        if (fs.existsSync(filePath)) {
-            const overwrite = await vscode.window.showWarningMessage(
+        if (fs.existsSync(filePath) && !overwrite) {
+            const result = await vscode.window.showWarningMessage(
                 `Profile "${profileName}" already exists. Overwrite?`,
                 'Overwrite', 'Cancel'
             );
-            if (overwrite !== 'Overwrite') return null;
+            if (result !== 'Overwrite') return null;
         }
 
         fs.writeFileSync(filePath, content, 'utf-8');

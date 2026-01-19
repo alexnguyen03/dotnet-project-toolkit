@@ -39,6 +39,9 @@ export interface PublishProfileInfo {
 
     /** Username for deployment */
     userName?: string;
+
+    /** Whether to open browser after deployment */
+    openBrowserOnDeploy?: boolean;
 }
 
 export interface ProjectInfo {
