@@ -45,9 +45,16 @@ export class ProfileInfoCommand extends BaseCommand {
 		this.log(`Deployment Project Path: ${projectPath || 'NOT FOUND'}`);
 		this.log(`Profile Path: ${profileInfo.path}`);
 
+		// Re-parse profile from disk to get latest data (including logPath)
+		const latestProfileInfo = this.profileService.parse(profileInfo.path);
+		if (!latestProfileInfo) {
+			vscode.window.showErrorMessage('Failed to load profile data');
+			return;
+		}
+
 		ProfileInfoPanel.show(
 			this.extensionUri,
-			profileInfo,
+			latestProfileInfo, // Use re-parsed data
 			projectName,
 			this.profileService,
 			this.passwordStorage,
