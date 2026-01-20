@@ -10,16 +10,28 @@ const execAsync = promisify(exec);
 
 /**
  * Log Viewer Service Interface
- * Handles fetching and displaying remote IIS logs
+ * Handles fetching and opening remote IIS logs
  */
 export interface ILogViewerService {
 	/**
-	 * Fetch and display logs from remote IIS server
+	 * Fetch and open logs from remote IIS server directly in VS Code editor
 	 * @param profileInfo Profile information containing server details
 	 * @param password Deployment password for authentication
-	 * @param lineCount Number of lines to fetch (default: 100)
+	 * @param lineCount Number of lines to fetch (deprecated - entire file is opened)
 	 */
 	viewLogs(profileInfo: PublishProfileInfo, password: string, lineCount?: number): Promise<void>;
+
+	/**
+	 * Quick log preview - Shows last ~200 lines in Output Channel with link to full file
+	 * @param profileInfo Profile information containing server details
+	 * @param password Deployment password for authentication
+	 * @param lineCount Number of lines to preview (default: 200)
+	 */
+	viewQuickLogs(
+		profileInfo: PublishProfileInfo,
+		password: string,
+		lineCount?: number
+	): Promise<void>;
 }
 
 /**
@@ -30,8 +42,8 @@ export class LogViewerService implements ILogViewerService {
 	private outputChannel: vscode.OutputChannel;
 
 	constructor(private readonly extensionOutputChannel: vscode.OutputChannel) {
-		// Create dedicated output channel for logs
-		this.outputChannel = vscode.window.createOutputChannel('IIS Stdout Logs');
+		// Create dedicated output channel for quick log previews
+		this.outputChannel = vscode.window.createOutputChannel('IIS Logs - Quick View');
 	}
 
 	async viewLogs(
@@ -44,11 +56,65 @@ export class LogViewerService implements ILogViewerService {
 
 		try {
 			this.log('Fetching logs from IIS server via MSDeploy...');
+
+			// Create temp directory for downloaded logs
+			const tempDir = path.join(os.tmpdir(), 'iis-logs', profileInfo.siteName || 'default');
+
+			// Ensure temp directory exists
+			if (!fs.existsSync(tempDir)) {
+				fs.mkdirSync(tempDir, { recursive: true });
+			}
+
+			// Download logs using MSDeploy
+			await this.downloadLogsViaMSDeploy(
+				profileInfo.publishUrl || '',
+				profileInfo.siteName || '',
+				profileInfo.userName || '',
+				password,
+				tempDir
+			);
+
+			// Get the latest log file path
+			const logFilePath = this.getLatestLogFilePath(tempDir);
+
+			// Open the log file directly in VS Code editor
+			if (logFilePath) {
+				const document = await vscode.workspace.openTextDocument(logFilePath);
+				await vscode.window.showTextDocument(document, {
+					preview: false,
+					viewColumn: vscode.ViewColumn.One,
+				});
+
+				this.log(`✓ Opened log file: ${logFilePath}`);
+				vscode.window.showInformationMessage(
+					`Log file opened: ${path.basename(logFilePath)}`
+				);
+			} else {
+				this.log('No log files found.');
+				vscode.window.showWarningMessage('No logs found on the server.');
+			}
+		} catch (error: any) {
+			this.log(`Error fetching logs: ${error.message}`);
+			vscode.window.showErrorMessage(`Failed to fetch logs: ${error.message}`);
+		}
+	}
+
+	async viewQuickLogs(
+		profileInfo: PublishProfileInfo,
+		password: string,
+		lineCount: number = 200
+	): Promise<void> {
+		// Store profile info for use in downloadLogsViaMSDeploy
+		this.currentProfileInfo = profileInfo;
+
+		try {
+			this.log('Fetching quick log preview from IIS server...');
+			this.outputChannel.clear();
 			this.outputChannel.show();
 			this.outputChannel.appendLine('='.repeat(80));
-			this.outputChannel.appendLine(`Fetching logs from: ${profileInfo.siteName}`);
+			this.outputChannel.appendLine(`📋 Quick Log Preview: ${profileInfo.siteName}`);
 			this.outputChannel.appendLine(`Server: ${profileInfo.publishUrl}`);
-			this.outputChannel.appendLine(`Lines: ${lineCount}`);
+			this.outputChannel.appendLine(`Preview Lines: ${lineCount}`);
 			this.outputChannel.appendLine('='.repeat(80));
 			this.outputChannel.appendLine('');
 
@@ -69,30 +135,46 @@ export class LogViewerService implements ILogViewerService {
 				tempDir
 			);
 
-			// Read and display the latest log file
-			const logContent = this.readLatestLogFile(tempDir, lineCount);
+			// Get the latest log file path
+			const logFilePath = this.getLatestLogFilePath(tempDir);
 
-			// Display logs
-			if (logContent && logContent.trim()) {
-				this.outputChannel.appendLine(logContent);
+			if (logFilePath) {
+				// Read and display preview
+				const preview = this.readLogPreview(logFilePath, lineCount);
+				this.outputChannel.appendLine(preview);
 				this.outputChannel.appendLine('');
 				this.outputChannel.appendLine('='.repeat(80));
-				this.outputChannel.appendLine('✓ Logs fetched successfully');
-				this.outputChannel.appendLine(`📁 Downloaded to: ${tempDir}`);
+				this.outputChannel.appendLine(`📁 Full log file: ${logFilePath}`);
+				this.outputChannel.appendLine(
+					'💡 Tip: Click the file path above to open the complete log file'
+				);
 				this.outputChannel.appendLine('='.repeat(80));
 
-				vscode.window.showInformationMessage(
-					'Logs fetched successfully. Check "IIS Stdout Logs" output.'
-				);
+				this.log(`✓ Quick log preview displayed`);
+				vscode.window
+					.showInformationMessage(
+						'Quick log preview ready. Check "IIS Logs - Quick View" output.',
+						'Open Full File'
+					)
+					.then((selection) => {
+						if (selection === 'Open Full File') {
+							vscode.workspace.openTextDocument(logFilePath).then((doc) => {
+								vscode.window.showTextDocument(doc, {
+									preview: false,
+									viewColumn: vscode.ViewColumn.One,
+								});
+							});
+						}
+					});
 			} else {
-				this.outputChannel.appendLine('No logs found or log file is empty.');
+				this.outputChannel.appendLine('No log files found.');
+				this.log('No log files found.');
 				vscode.window.showWarningMessage('No logs found on the server.');
 			}
 		} catch (error: any) {
-			this.log(`Error fetching logs: ${error.message}`);
+			this.log(`Error fetching quick logs: ${error.message}`);
 			this.outputChannel.appendLine('');
 			this.outputChannel.appendLine('❌ ERROR: ' + error.message);
-
 			vscode.window.showErrorMessage(`Failed to fetch logs: ${error.message}`);
 		}
 	}
@@ -219,12 +301,13 @@ export class LogViewerService implements ILogViewerService {
 	}
 
 	/**
-	 * Read the latest log file from downloaded directory
+	 * Get the path to the latest log file from downloaded directory
 	 */
-	private readLatestLogFile(logDir: string, lineCount: number): string {
+	private getLatestLogFilePath(logDir: string): string | null {
 		try {
 			if (!fs.existsSync(logDir)) {
-				return 'Log directory not found locally.';
+				this.log('Log directory not found locally.');
+				return null;
 			}
 
 			// Find all .log files
@@ -239,32 +322,47 @@ export class LogViewerService implements ILogViewerService {
 				.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
 			if (files.length === 0) {
-				return 'No log files found.';
+				this.log('No log files found.');
+				return null;
 			}
 
 			const latestLog = files[0];
-			this.log(`Reading latest log: ${latestLog.name}`);
+			this.log(`Found latest log: ${latestLog.name}`);
+			return latestLog.path;
+		} catch (error: any) {
+			this.log(`Error finding log file: ${error.message}`);
+			return null;
+		}
+	}
 
-			// Read file content
-			const content = fs.readFileSync(latestLog.path, 'utf-8');
+	/**
+	 * Read log file preview (last N lines with metadata)
+	 */
+	private readLogPreview(logFilePath: string, lineCount: number): string {
+		try {
+			const stats = fs.statSync(logFilePath);
+			const content = fs.readFileSync(logFilePath, 'utf-8');
 			const lines = content.split('\n');
-
-			// Get last N lines
 			const lastLines = lines.slice(-lineCount);
 
-			// Build output with metadata
+			const fileName = path.basename(logFilePath);
+			const fileSize = (stats.size / 1024).toFixed(2);
+			const lastModified = stats.mtime.toLocaleString();
+
 			const output = [
-				`=== Latest Log File: ${latestLog.name} ===`,
-				`=== Last Modified: ${latestLog.mtime.toLocaleString()} ===`,
-				`=== Size: ${(fs.statSync(latestLog.path).size / 1024).toFixed(2)} KB ===`,
-				`=== Showing last ${lastLines.length} lines ===`,
+				`📄 File: ${fileName}`,
+				`📊 Size: ${fileSize} KB`,
+				`🕒 Last Modified: ${lastModified}`,
+				`📝 Showing last ${lastLines.length} of ${lines.length} lines`,
+				'',
+				'─'.repeat(80),
 				'',
 				...lastLines,
 			].join('\n');
 
 			return output;
 		} catch (error: any) {
-			this.log(`Error reading log file: ${error.message}`);
+			this.log(`Error reading log preview: ${error.message}`);
 			return `Error reading log file: ${error.message}`;
 		}
 	}

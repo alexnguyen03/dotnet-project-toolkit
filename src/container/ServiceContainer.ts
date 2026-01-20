@@ -205,6 +205,32 @@ export class ServiceContainer {
 				async (args: any) => {
 					if (args && args.profileInfo && args.projectName) {
 						try {
+							// Ask user to choose log view mode
+							const choice = await vscode.window.showQuickPick(
+								[
+									{
+										label: '$(eye) Quick Log Preview',
+										description: 'View last ~200 lines in Output Channel',
+										detail: 'Fast preview with option to open full file',
+										value: 'quick',
+									},
+									{
+										label: '$(file-text) Full Log File',
+										description: 'Open complete log file in editor',
+										detail: 'Opens the entire log file for detailed inspection',
+										value: 'full',
+									},
+								],
+								{
+									placeHolder: 'How would you like to view the logs?',
+									title: 'View IIS Logs',
+								}
+							);
+
+							if (!choice) {
+								return; // User cancelled
+							}
+
 							// Get password from storage
 							const passwordKey = container.passwordStorage.generateKey(
 								args.projectName,
@@ -219,8 +245,18 @@ export class ServiceContainer {
 								return;
 							}
 
-							// Fetch and display logs
-							await container.logViewerService.viewLogs(args.profileInfo, password);
+							// Fetch and display logs based on choice
+							if (choice.value === 'quick') {
+								await container.logViewerService.viewQuickLogs(
+									args.profileInfo,
+									password
+								);
+							} else {
+								await container.logViewerService.viewLogs(
+									args.profileInfo,
+									password
+								);
+							}
 						} catch (error: any) {
 							vscode.window.showErrorMessage(`Failed to view logs: ${error.message}`);
 						}
