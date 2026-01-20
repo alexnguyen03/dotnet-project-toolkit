@@ -56,12 +56,15 @@ export class DeploymentService implements IDeploymentService {
 			}
 
 			// 2. Build dotnet publish command
-			onProgress?.('Building project...', 30);
+			onProgress?.(`Building ${projectName} (${profileInfo.fileName})...`, 30);
 			const command = this.buildPublishCommand(projectPath, profileInfo, password);
 			this.log(`Executing: ${command.replace(password, '***')}`);
 
 			// 3. Execute deployment
-			onProgress?.('Publishing to IIS...', 60);
+			onProgress?.(
+				`Publishing ${projectName} to ${profileInfo.environment.toUpperCase()} (${profileInfo.siteName})...`,
+				60
+			);
 			const result = await this.executeCommand(command, path.dirname(projectPath));
 
 			// 4. Check result
@@ -85,7 +88,10 @@ export class DeploymentService implements IDeploymentService {
 					}
 				}
 
-				onProgress?.('Complete!', 100);
+				onProgress?.(
+					`✅ ${projectName} (${profileInfo.fileName}) deployed successfully!`,
+					100
+				);
 				return {
 					success: true,
 					output: result.output,
