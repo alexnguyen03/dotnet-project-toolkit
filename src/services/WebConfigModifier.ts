@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -43,9 +44,18 @@ export class WebConfigModifier implements IWebConfigModifier {
 		try {
 			this.log(`Modifying web.config stdout logging: ${enable ? 'ENABLE' : 'DISABLE'}`);
 
+			// Find msdeploy.exe path
+			const msdeployPath = this.findMsDeployPath();
+			if (!msdeployPath) {
+				throw new Error(
+					'MSDeploy (msdeploy.exe) not found. Please install Web Deploy from https://www.iis.net/downloads/microsoft/web-deploy'
+				);
+			}
+
 			// Build PowerShell script to modify web.config via MSDeploy
 			// We'll use setParameter to modify the aspNetCore element
 			const script = this.buildModificationScript(
+				msdeployPath,
 				publishUrl,
 				siteName,
 				userName,
@@ -77,6 +87,7 @@ export class WebConfigModifier implements IWebConfigModifier {
 	}
 
 	private buildModificationScript(
+		msdeployPath: string,
 		publishUrl: string,
 		siteName: string,
 		userName: string,
@@ -108,14 +119,51 @@ export class WebConfigModifier implements IWebConfigModifier {
             `.replace(/\n/g, '; ');
 
 		// Build msdeploy command to run PowerShell script remotely
+		// Use & operator to invoke command with spaces in path
 		const command =
-			`msdeploy.exe -verb:sync ` +
+			`& "${msdeployPath}" -verb:sync ` +
 			`-source:runCommand="${psScript}",waitInterval=5000 ` +
 			`-dest:auto,computerName="https://${publishUrl}/msdeploy.axd?site=${siteName}",` +
 			`userName="${userName}",password="${password}",authType="Basic" ` +
 			`-allowUntrusted`;
 
 		return command;
+	}
+
+	/**
+	 * Find msdeploy.exe path from common installation locations
+	 */
+	private findMsDeployPath(): string | null {
+		const commonPaths = [
+			'C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe',
+			'C:\\Program Files (x86)\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe',
+			'C:\\Program Files\\IIS\\Microsoft Web Deploy V4\\msdeploy.exe',
+			'C:\\Program Files (x86)\\IIS\\Microsoft Web Deploy V4\\msdeploy.exe',
+		];
+
+		for (const msdeployPath of commonPaths) {
+			if (fs.existsSync(msdeployPath)) {
+				this.log(`Found msdeploy.exe at: ${msdeployPath}`);
+				return msdeployPath;
+			}
+		}
+
+		// Try to find in PATH
+		try {
+			const { stdout } = require('child_process').execSync('where msdeploy.exe', {
+				encoding: 'utf-8',
+			});
+			const foundPath = stdout.trim().split('\n')[0];
+			if (foundPath && fs.existsSync(foundPath)) {
+				this.log(`Found msdeploy.exe in PATH: ${foundPath}`);
+				return foundPath;
+			}
+		} catch {
+			// Not in PATH
+		}
+
+		this.log('msdeploy.exe not found in common locations');
+		return null;
 	}
 
 	private log(message: string): void {

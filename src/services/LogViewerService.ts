@@ -363,21 +363,52 @@ export class LogViewerService implements ILogViewerService {
 	}
 
 	/**
-	 * Read log file preview (last N lines with metadata)
+	 * Read log file preview (last N lines with metadata and file list)
 	 */
 	private readLogPreview(logFilePath: string, lineCount: number): string {
 		try {
+			const logDir = path.dirname(logFilePath);
+			const currentFileName = path.basename(logFilePath);
+
+			// Get all log files in directory
+			const allLogFiles = fs
+				.readdirSync(logDir)
+				.filter((f) => f.endsWith('.log'))
+				.map((f) => {
+					const filePath = path.join(logDir, f);
+					const stats = fs.statSync(filePath);
+					return {
+						name: f,
+						size: (stats.size / 1024).toFixed(2),
+						mtime: stats.mtime,
+						isCurrent: f === currentFileName,
+					};
+				})
+				.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+
+			// Read current file content
 			const stats = fs.statSync(logFilePath);
 			const content = fs.readFileSync(logFilePath, 'utf-8');
 			const lines = content.split('\n');
 			const lastLines = lines.slice(-lineCount);
 
-			const fileName = path.basename(logFilePath);
 			const fileSize = (stats.size / 1024).toFixed(2);
 			const lastModified = stats.mtime.toLocaleString();
 
+			// Build file list
+			const fileListLines = allLogFiles.map((f) => {
+				const marker = f.isCurrent ? '👉' : '  ';
+				const dateStr = f.mtime.toLocaleString();
+				return `${marker} ${f.name} (${f.size} KB) - ${dateStr}`;
+			});
+
 			const output = [
-				`📄 File: ${fileName}`,
+				'📁 Available Log Files:',
+				'─'.repeat(80),
+				...fileListLines,
+				'',
+				'═'.repeat(80),
+				`📄 Currently Viewing: ${currentFileName}`,
 				`📊 Size: ${fileSize} KB`,
 				`🕒 Last Modified: ${lastModified}`,
 				`📝 Showing last ${lastLines.length} of ${lines.length} lines`,
