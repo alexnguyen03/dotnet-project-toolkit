@@ -99,32 +99,16 @@ export class WebConfigModifier implements IWebConfigModifier {
 		const stdoutEnabled = enable ? 'true' : 'false';
 		const stdoutLogFile = '.\\logs\\stdout';
 
-		// PowerShell script to modify web.config
-		const psScript = `
-            $webConfigPath = "$env:SystemDrive\\inetpub\\wwwroot\\${siteName}\\web.config"
-            if (Test-Path $webConfigPath) {
-                [xml]$xml = Get-Content $webConfigPath
-                $aspNetCore = $xml.configuration.'system.webServer'.aspNetCore
-                if ($aspNetCore) {
-                    $aspNetCore.SetAttribute('stdoutLogEnabled', '${stdoutEnabled}')
-                    $aspNetCore.SetAttribute('stdoutLogFile', '${stdoutLogFile}')
-                    $xml.Save($webConfigPath)
-                    Write-Host "Updated web.config: stdoutLogEnabled=${stdoutEnabled}"
-                } else {
-                    Write-Host "aspNetCore element not found in web.config"
-                }
-            } else {
-                Write-Host "web.config not found at $webConfigPath"
-            }
-            `.replace(/\n/g, '; ');
+		// PowerShell script to modify web.config - keep it simple and compact
+		const psScript = `$p='$env:SystemDrive\\inetpub\\wwwroot\\${siteName}\\web.config';if(Test-Path $p){[xml]$x=Get-Content $p;$a=$x.configuration.'system.webServer'.aspNetCore;if($a){$a.SetAttribute('stdoutLogEnabled','${stdoutEnabled}');$a.SetAttribute('stdoutLogFile','${stdoutLogFile}');$x.Save($p);Write-Host 'Updated'}}`;
 
 		// Build msdeploy command to run PowerShell script remotely
 		// Use & operator to invoke command with spaces in path
+		// Escape quotes properly for PowerShell
 		const command =
 			`& "${msdeployPath}" -verb:sync ` +
-			`-source:runCommand="${psScript}",waitInterval=5000 ` +
-			`-dest:auto,computerName="https://${publishUrl}/msdeploy.axd?site=${siteName}",` +
-			`userName="${userName}",password="${password}",authType="Basic" ` +
+			`'-source:runCommand="${psScript}",waitInterval=5000' ` +
+			`'-dest:auto,computerName="https://${publishUrl}/msdeploy.axd?site=${siteName}",userName="${userName}",password="${password}",authType="Basic"' ` +
 			`-allowUntrusted`;
 
 		return command;
