@@ -302,6 +302,7 @@ export class LogViewerService implements ILogViewerService {
 
 	/**
 	 * Get the path to the latest log file from downloaded directory
+	 * Prioritizes today's logs, falls back to most recent if none found
 	 */
 	private getLatestLogFilePath(logDir: string): string | null {
 		try {
@@ -310,15 +311,19 @@ export class LogViewerService implements ILogViewerService {
 				return null;
 			}
 
-			// Find all .log files
+			// Find all .log files with their metadata
 			const files = fs
 				.readdirSync(logDir)
 				.filter((f) => f.endsWith('.log'))
-				.map((f) => ({
-					name: f,
-					path: path.join(logDir, f),
-					mtime: fs.statSync(path.join(logDir, f)).mtime,
-				}))
+				.map((f) => {
+					const filePath = path.join(logDir, f);
+					const stats = fs.statSync(filePath);
+					return {
+						name: f,
+						path: filePath,
+						mtime: stats.mtime,
+					};
+				})
 				.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
 			if (files.length === 0) {
@@ -326,8 +331,30 @@ export class LogViewerService implements ILogViewerService {
 				return null;
 			}
 
-			const latestLog = files[0];
-			this.log(`Found latest log: ${latestLog.name}`);
+			// Get today's date (start of day)
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			// Try to find today's logs first
+			const todayLogs = files.filter((f) => {
+				const fileDate = new Date(f.mtime);
+				fileDate.setHours(0, 0, 0, 0);
+				return fileDate.getTime() === today.getTime();
+			});
+
+			let latestLog;
+			if (todayLogs.length > 0) {
+				// Use today's most recent log
+				latestLog = todayLogs[0];
+				this.log(`Found today's log: ${latestLog.name}`);
+			} else {
+				// Fallback to most recent log overall
+				latestLog = files[0];
+				this.log(
+					`No today's logs found, using latest: ${latestLog.name} (${latestLog.mtime.toLocaleDateString()})`
+				);
+			}
+
 			return latestLog.path;
 		} catch (error: any) {
 			this.log(`Error finding log file: ${error.message}`);
