@@ -85,6 +85,10 @@ export class WatchService {
 				// Determine if we need to run this project (might already be running)
 				if (!this.isProjectRunning(project.csprojPath)) {
 					await this.runWatch(project, group.arguments);
+
+					// Wait 3 seconds before starting next project to avoid file locking conflicts
+					// This gives the previous process time to release file handles
+					await new Promise((resolve) => setTimeout(resolve, 3000));
 				}
 			} else {
 				vscode.window.showErrorMessage(

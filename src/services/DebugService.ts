@@ -271,8 +271,9 @@ export class DebugService {
 			if (project) {
 				if (!this.isProjectDebugging(project.csprojPath)) {
 					await this.startDebugging(project);
-					// Small delay between launches to avoid overwhelming VS Code
-					await new Promise((resolve) => setTimeout(resolve, 500));
+					// Wait 3 seconds before starting next project to avoid file locking conflicts
+					// This gives the previous process time to release file handles
+					await new Promise((resolve) => setTimeout(resolve, 3000));
 				}
 			} else {
 				vscode.window.showErrorMessage(`Project '${projectName}' not found in workspace`);
