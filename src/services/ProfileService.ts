@@ -82,15 +82,19 @@ export class ProfileService implements IProfileService {
 				return null;
 			}
 
-			// Store password
-			const passwordKey = this.passwordStorage.generateKey(
-				projectInfo.name,
-				data.profileName
-			);
-			await this.passwordStorage.store(passwordKey, data.password);
+			// Store password only if provided (not KEEP_EXISTING)
+			if (data.password && data.password !== 'KEEP_EXISTING') {
+				const passwordKey = this.passwordStorage.generateKey(
+					projectInfo.name,
+					data.profileName
+				);
+				await this.passwordStorage.store(passwordKey, data.password);
+				this.log(`Password stored for key: ${passwordKey}`);
+			} else {
+				this.log(`Password not changed (keeping existing)`);
+			}
 
 			this.log(`Created profile: ${pubxmlPath}`);
-			this.log(`Password key: ${passwordKey}`);
 
 			return pubxmlPath;
 		} catch (error) {
