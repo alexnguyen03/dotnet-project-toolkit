@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as cp from 'child_process';
+import * as util from 'util';
 import { DebugGroup } from '../models/DebugModels';
 import { ProjectInfo } from '../models/ProjectModels';
+
+const exec = util.promisify(cp.exec);
 
 interface ActiveDebugSession {
 	sessionId: string;
@@ -129,6 +133,30 @@ export class DebugService {
 	}
 
 	/**
+	 * Run dotnet build for a project
+	 */
+	private async runBuild(project: ProjectInfo): Promise<boolean> {
+		try {
+			await vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: `Building ${project.name}...`,
+					cancellable: false,
+				},
+				async () => {
+					await exec(`dotnet build "${project.csprojPath}"`, { cwd: project.projectDir });
+				}
+			);
+			return true;
+		} catch (error: any) {
+			vscode.window.showErrorMessage(
+				`Build failed for ${project.name}. Check output for details.`
+			);
+			return false;
+		}
+	}
+
+	/**
 	 * Start debugging a single project
 	 */
 	public async startDebugging(project: ProjectInfo): Promise<void> {
@@ -143,6 +171,11 @@ export class DebugService {
 			vscode.window.showErrorMessage(
 				`Cannot debug ${project.name}: TargetFramework not found in .csproj`
 			);
+			return;
+		}
+
+		// Run build before debug
+		if (!(await this.runBuild(project))) {
 			return;
 		}
 

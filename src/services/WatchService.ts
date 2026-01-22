@@ -48,6 +48,11 @@ export class WatchService {
 			return;
 		}
 
+		// Run build before watch
+		if (!(await this.runBuild(project))) {
+			return;
+		}
+
 		const terminalName = `Watch: ${project.name}`;
 		const terminal = vscode.window.createTerminal({
 			name: terminalName,
@@ -73,6 +78,30 @@ export class WatchService {
 
 		terminal.sendText(command);
 		this._onDidChangeRunningWatches.fire();
+	}
+
+	/**
+	 * Run dotnet build for a project
+	 */
+	private async runBuild(project: ProjectInfo): Promise<boolean> {
+		try {
+			await vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: `Building ${project.name}...`,
+					cancellable: false,
+				},
+				async () => {
+					await exec(`dotnet build "${project.csprojPath}"`, { cwd: project.projectDir });
+				}
+			);
+			return true;
+		} catch (error: any) {
+			vscode.window.showErrorMessage(
+				`Build failed for ${project.name}. Check output for details.`
+			);
+			return false;
+		}
 	}
 
 	/**
