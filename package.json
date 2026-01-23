@@ -171,6 +171,11 @@
 				"command": "dotnet-project-toolkit.debug.stopAll",
 				"title": "Stop All Debugging",
 				"icon": "$(debug-stop)"
+			},
+			{
+				"command": "dotnet-project-toolkit.run.reload",
+				"title": "Reload/Restart",
+				"icon": "$(refresh)"
 			}
 		],
 		"viewsContainers": {
@@ -191,16 +196,10 @@
 					"contextualTitle": "Publish Profiles"
 				},
 				{
-					"id": "dotnetWatch",
-					"name": "Watch",
-					"icon": "$(eye)",
-					"contextualTitle": "Watch Instances"
-				},
-				{
-					"id": "dotnetDebug",
-					"name": "Debug",
-					"icon": "$(debug-alt)",
-					"contextualTitle": "Debug Configurations"
+					"id": "dotnetRun",
+					"name": "Run",
+					"icon": "$(play-circle)",
+					"contextualTitle": "Run Configurations"
 				},
 				{
 					"id": "dotnetHistory",
@@ -241,7 +240,7 @@
 				},
 				{
 					"command": "dotnet-project-toolkit.debug.createGroup",
-					"when": "view == dotnetDebug",
+					"when": "view == dotnetRun",
 					"group": "navigation"
 				}
 			],
@@ -283,42 +282,92 @@
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.start",
-					"when": "view == dotnetWatch && viewItem == watchProject",
-					"group": "inline"
+					"when": "view == dotnetRun && viewItem == runProject",
+					"group": "inline@1"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.start",
+					"when": "view == dotnetRun && viewItem == runProject",
+					"group": "inline@2"
+				},
+				{
+					"command": "dotnet-project-toolkit.watch.stop",
+					"when": "view == dotnetRun && viewItem == runProjectWatching",
+					"group": "inline@1"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.start",
+					"when": "view == dotnetRun && viewItem == runProjectWatching",
+					"group": "inline@2"
+				},
+				{
+					"command": "dotnet-project-toolkit.run.reload",
+					"when": "view == dotnetRun && viewItem == runProjectWatching",
+					"group": "inline@3"
+				},
+				{
+					"command": "dotnet-project-toolkit.watch.start",
+					"when": "view == dotnetRun && viewItem == runProjectDebugging",
+					"group": "inline@1"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.stop",
+					"when": "view == dotnetRun && viewItem == runProjectDebugging",
+					"group": "inline@2"
+				},
+				{
+					"command": "dotnet-project-toolkit.run.reload",
+					"when": "view == dotnetRun && viewItem == runProjectDebugging",
+					"group": "inline@3"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.runGroup",
-					"when": "view == dotnetWatch && viewItem == watchGroup",
+					"when": "view == dotnetRun && viewItem == watchGroup",
 					"group": "inline"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.deleteGroup",
-					"when": "view == dotnetWatch && viewItem == watchGroup",
+					"when": "view == dotnetRun && viewItem == watchGroup",
 					"group": "inline"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.stopGroup",
-					"when": "view == dotnetWatch && viewItem == watchGroupRunning",
+					"when": "view == dotnetRun && viewItem == watchGroupRunning",
 					"group": "inline"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.deleteGroup",
-					"when": "view == dotnetWatch && viewItem == watchGroupRunning",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.watch.stop",
-					"when": "view == dotnetWatch && viewItem == runningWatch",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.watch.stop",
-					"when": "view == dotnetWatch && viewItem == watchProjectRunning",
+					"when": "view == dotnetRun && viewItem == watchGroupRunning",
 					"group": "inline"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.createGroup",
-					"when": "view == dotnetWatch && viewItem == watchGroupsContainer",
+					"when": "view == dotnetRun && viewItem == watchGroupsContainer",
+					"group": "inline"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.createGroup",
+					"when": "view == dotnetRun && viewItem == debugGroupsContainer",
+					"group": "inline"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.runGroup",
+					"when": "view == dotnetRun && viewItem == debugGroup",
+					"group": "inline"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.stopGroup",
+					"when": "view == dotnetRun && viewItem == debugGroupRunning",
+					"group": "inline"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.deleteGroup",
+					"when": "view == dotnetRun && viewItem == debugGroup",
+					"group": "inline"
+				},
+				{
+					"command": "dotnet-project-toolkit.debug.deleteGroup",
+					"when": "view == dotnetRun && viewItem == debugGroupRunning",
 					"group": "inline"
 				},
 				{
@@ -364,46 +413,6 @@
 				{
 					"command": "dotnet-project-toolkit.watch.stop",
 					"when": "view == dotnetToolkitExplorer && viewItem == watchProjectRunning",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.createGroup",
-					"when": "view == dotnetDebug && viewItem == debugGroupsContainer",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.stopAll",
-					"when": "view == dotnetDebug && viewItem == debugProjectsContainerRunning",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.start",
-					"when": "view == dotnetDebug && viewItem == debugProject",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.stop",
-					"when": "view == dotnetDebug && viewItem == debugProjectRunning",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.runGroup",
-					"when": "view == dotnetDebug && viewItem == debugGroup",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.stopGroup",
-					"when": "view == dotnetDebug && viewItem == debugGroupRunning",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.deleteGroup",
-					"when": "view == dotnetDebug && viewItem == debugGroup",
-					"group": "inline"
-				},
-				{
-					"command": "dotnet-project-toolkit.debug.deleteGroup",
-					"when": "view == dotnetDebug && viewItem == debugGroupRunning",
 					"group": "inline"
 				},
 				{

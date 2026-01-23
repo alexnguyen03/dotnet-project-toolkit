@@ -23,6 +23,8 @@ import { DebugService } from '../services/DebugService';
 import { DebugConfigService } from '../services/DebugConfigService';
 import { DebugTreeProvider } from '../ui/debug/DebugTreeProvider';
 import { PublishTreeProvider } from '../ui/publish/PublishTreeProvider';
+import { RunService } from '../services/RunService';
+import { RunTreeProvider } from '../ui/RunTreeProvider';
 
 // Import new abstractions
 import { ConfigurationService } from '../services/ConfigurationService';
@@ -58,6 +60,8 @@ export class ServiceContainer {
 	readonly debugConfigService: DebugConfigService;
 	readonly debugTreeProvider: DebugTreeProvider;
 	readonly publishTreeProvider: PublishTreeProvider;
+	readonly runService: RunService;
+	readonly runTreeProvider: RunTreeProvider;
 	readonly logViewerService: any; // Will be typed properly
 
 	private constructor(context: vscode.ExtensionContext) {
@@ -123,6 +127,9 @@ export class ServiceContainer {
 		this.debugConfigService = new DebugConfigService(context);
 		this.debugService = new DebugService(context);
 
+		// Create RunService to coordinate watch and debug
+		this.runService = new RunService(this.watchService, this.debugService);
+
 		// Create tree providers
 		this.historyProvider = new HistoryTreeProvider(this.historyManager);
 		this.watchTreeProvider = new WatchTreeProvider(
@@ -136,6 +143,14 @@ export class ServiceContainer {
 			this.debugConfigService,
 			this.projectScanner,
 			workspaceRoot
+		);
+		this.runTreeProvider = new RunTreeProvider(
+			this.runService,
+			this.watchConfigService,
+			this.debugConfigService,
+			this.projectScanner,
+			workspaceRoot,
+			this.debugService.hasDebugger
 		);
 		this.publishTreeProvider = new PublishTreeProvider(workspaceRoot);
 		this.treeProvider = new UnifiedTreeProvider(
@@ -158,15 +173,14 @@ export class ServiceContainer {
 		// Register tree providers
 		vscode.window.registerTreeDataProvider('dotnetToolkitExplorer', container.treeProvider);
 		vscode.window.registerTreeDataProvider('dotnetHistory', container.historyProvider);
-		vscode.window.registerTreeDataProvider('dotnetWatch', container.watchTreeProvider);
-		vscode.window.registerTreeDataProvider('dotnetDebug', container.debugTreeProvider);
+		vscode.window.registerTreeDataProvider('dotnetRun', container.runTreeProvider);
 		vscode.window.registerTreeDataProvider('dotnetPublish', container.publishTreeProvider);
 
 		// Create refresh callback
 		const onRefresh = () => {
 			container.treeProvider.refresh();
 			container.historyProvider.refresh();
-			container.watchTreeProvider.refresh();
+			container.runTreeProvider.refresh();
 			container.publishTreeProvider.refresh();
 			ProfileInfoPanel.updateAll();
 		};
@@ -310,8 +324,8 @@ export class ServiceContainer {
 				'dotnet-project-toolkit.watch.start',
 				async (item: any) => {
 					if (item && item.project) {
-						await container.watchService.runWatch(item.project);
-						container.watchTreeProvider.refresh();
+						await container.runService.startWatch(item.project);
+						container.runTreeProvider.refresh();
 					}
 				}
 			),
@@ -319,7 +333,7 @@ export class ServiceContainer {
 				const csprojPath = item?.csprojPath || item?.project?.csprojPath;
 				if (csprojPath) {
 					container.watchService.stopWatch(csprojPath);
-					container.watchTreeProvider.refresh();
+					container.runTreeProvider.refresh();
 				}
 			}),
 			vscode.commands.registerCommand(
@@ -330,13 +344,13 @@ export class ServiceContainer {
 							vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''
 						);
 						await container.watchService.runGroup(item.group, structure.projects);
-						container.watchTreeProvider.refresh();
+						container.runTreeProvider.refresh();
 					}
 				}
 			),
 			vscode.commands.registerCommand('dotnet-project-toolkit.watch.stopAll', () => {
 				container.watchService.stopAll();
-				container.watchTreeProvider.refresh();
+				container.runTreeProvider.refresh();
 			}),
 			vscode.commands.registerCommand(
 				'dotnet-project-toolkit.watch.stopGroup',
@@ -346,7 +360,7 @@ export class ServiceContainer {
 							vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''
 						);
 						container.watchService.stopGroup(item.group, structure.projects);
-						container.watchTreeProvider.refresh();
+						container.runTreeProvider.refresh();
 					}
 				}
 			),
@@ -384,7 +398,7 @@ export class ServiceContainer {
 							name: name,
 							projects: selected.map((s) => s.project.name),
 						});
-						container.watchTreeProvider.refresh();
+						container.runTreeProvider.refresh();
 						vscode.window.showInformationMessage(`Watch group '${name}' created!`);
 					}
 				}
@@ -400,7 +414,7 @@ export class ServiceContainer {
 						);
 						if (confirm === 'Delete') {
 							await container.watchConfigService.deleteGroup(item.group.id);
-							container.watchTreeProvider.refresh();
+							container.runTreeProvider.refresh();
 						}
 					}
 				}
@@ -413,8 +427,8 @@ export class ServiceContainer {
 				'dotnet-project-toolkit.debug.start',
 				async (item: any) => {
 					if (item && item.project) {
-						await container.debugService.startDebugging(item.project);
-						container.debugTreeProvider.refresh();
+						await container.runService.startDebug(item.project);
+						container.runTreeProvider.refresh();
 					}
 				}
 			),
@@ -424,7 +438,7 @@ export class ServiceContainer {
 					const csprojPath = item?.csprojPath || item?.project?.csprojPath;
 					if (csprojPath) {
 						await container.debugService.stopDebugging(csprojPath);
-						container.debugTreeProvider.refresh();
+						container.runTreeProvider.refresh();
 					}
 				}
 			),
@@ -436,7 +450,7 @@ export class ServiceContainer {
 							vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''
 						);
 						await container.debugService.startGroup(item.group, structure.projects);
-						container.debugTreeProvider.refresh();
+						container.runTreeProvider.refresh();
 					}
 				}
 			),
@@ -448,7 +462,7 @@ export class ServiceContainer {
 							vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''
 						);
 						await container.debugService.stopGroup(item.group, structure.projects);
-						container.debugTreeProvider.refresh();
+						container.runTreeProvider.refresh();
 					}
 				}
 			),
@@ -485,7 +499,7 @@ export class ServiceContainer {
 							name: name,
 							projects: selected.map((s) => s.project.name),
 						});
-						container.debugTreeProvider.refresh();
+						container.runTreeProvider.refresh();
 						vscode.window.showInformationMessage(`Debug group '${name}' created!`);
 					}
 				}
@@ -501,15 +515,28 @@ export class ServiceContainer {
 						);
 						if (confirm === 'Delete') {
 							await container.debugConfigService.deleteGroup(item.group.name);
-							container.debugTreeProvider.refresh();
+							container.runTreeProvider.refresh();
 						}
 					}
 				}
 			),
 			vscode.commands.registerCommand('dotnet-project-toolkit.debug.stopAll', async () => {
 				await container.debugService.stopAll();
-				container.debugTreeProvider.refresh();
+				container.runTreeProvider.refresh();
 			})
+		);
+
+		// Register Run reload command
+		context.subscriptions.push(
+			vscode.commands.registerCommand(
+				'dotnet-project-toolkit.run.reload',
+				async (item: any) => {
+					if (item && item.project) {
+						await container.runService.reload(item.project);
+						container.runTreeProvider.refresh();
+					}
+				}
+			)
 		);
 
 		// Register createProfileWithPanel command
