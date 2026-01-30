@@ -6,6 +6,7 @@ import { IProfileService, ProfileWizardData } from '../services/ProfileService';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
 import { HistoryManager } from '../services/HistoryManager';
 import { DeploymentRecordHelper } from '../models/DeploymentRecord';
+import { ConnectionTester } from '../utils/ConnectionTester';
 
 /**
  * Profile Info Webview Panel
@@ -116,6 +117,9 @@ export class ProfileInfoPanel {
 						break;
 					case 'ready':
 						await this.sendUpdateData();
+						break;
+					case 'testConnection':
+						await this.handleTestConnection(message.data);
 						break;
 				}
 			},
@@ -503,6 +507,49 @@ export class ProfileInfoPanel {
 		const allHistory = this.historyManager.getAllHistory();
 		const latest = allHistory.find((h) => h.profileName === profileName);
 		return latest?.status === 'in-progress';
+	}
+
+	private async handleTestConnection(data: any): Promise<void> {
+		this.outputChannel.appendLine(`[ProfileInfo] Testing connection for ${data.profileName}`);
+
+		// Create a temporary profile object from form data
+		const tempProfile: PublishProfileInfo = {
+			name: data.profileName,
+			path: this.currentProfileInfo.path,
+			fileName: data.profileName,
+			environment: data.environment as DeployEnvironment,
+			isProduction: data.environment === DeployEnvironment.Production,
+			publishUrl: data.publishUrl,
+			siteName: data.siteName,
+			siteUrl: data.siteUrl,
+			userName: data.username,
+			openBrowserOnDeploy: data.openBrowserOnDeploy,
+			enableStdoutLog: data.enableStdoutLog,
+			logPath: data.logPath,
+			// Infer method from current profile or guess. Usually it's in the profile file.
+			// The form doesn't actually allow changing the method (MSDeploy vs FileSystem).
+			// We should use the method from the saved profile, as the UI doesn't expose it.
+			publishMethod: this.currentProfileInfo.publishMethod
+		};
+
+		// If the user changed the URL, we might want to guess the method if it's not set
+		// But simpler to rely on existing method. 
+
+		await vscode.window.withProgress(
+			{
+				location: vscode.ProgressLocation.Notification,
+				title: `Testing connection to ${data.profileName}...`,
+				cancellable: false,
+			},
+			async () => {
+				const result = await ConnectionTester.testConnection(tempProfile, this.outputChannel);
+				if (result.success) {
+					vscode.window.showInformationMessage(`✅ Connection successful: ${result.message}`);
+				} else {
+					vscode.window.showErrorMessage(`❌ Connection failed: ${result.message}`);
+				}
+			}
+		);
 	}
 
 	public dispose() {

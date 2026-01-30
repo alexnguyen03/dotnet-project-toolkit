@@ -176,6 +176,11 @@
 				"command": "dotnet-project-toolkit.run.reload",
 				"title": "Reload/Restart",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "dotnet-project-toolkit.testConnection",
+				"title": "Test Connection",
+				"icon": "$(broadcast)"
 			}
 		],
 		"viewsContainers": {
@@ -266,6 +271,11 @@
 					"group": "inline@2"
 				},
 				{
+					"command": "dotnet-project-toolkit.testConnection",
+					"when": "view == dotnetToolkitExplorer && viewItem == publishProfile",
+					"group": "inline@3"
+				},
+				{
 					"command": "dotnet-project-toolkit.createPublishProfile",
 					"when": "view == dotnetPublish && viewItem == project",
 					"group": "inline"
@@ -279,6 +289,11 @@
 					"command": "dotnet-project-toolkit.deletePublishProfile",
 					"when": "view == dotnetPublish && viewItem == publishProfile",
 					"group": "inline@2"
+				},
+				{
+					"command": "dotnet-project-toolkit.testConnection",
+					"when": "view == dotnetPublish && viewItem == publishProfile",
+					"group": "inline@3"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.start",
@@ -506,6 +521,7 @@
 		"typescript-eslint": "^8.52.0"
 	},
 	"dependencies": {
-		"fast-xml-parser": "^5.3.3"
+		"fast-xml-parser": "^5.3.3",
+		"vsce": "^2.15.0"
 	}
 }

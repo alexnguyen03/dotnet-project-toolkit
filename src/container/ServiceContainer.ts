@@ -10,6 +10,7 @@ import { CreateProfileCommand } from '../commands/CreateProfileCommand';
 import { DeleteProfileCommand } from '../commands/DeleteProfileCommand';
 import { EditProfileCommand } from '../commands/EditProfileCommand';
 import { ProfileInfoCommand } from '../commands/ProfileInfoCommand';
+import { TestConnectionCommand } from '../commands/TestConnectionCommand';
 import { RefreshCommand } from '../commands/RefreshCommand';
 import { UnifiedTreeProvider } from '../ui/UnifiedTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
@@ -210,6 +211,7 @@ export class ServiceContainer {
 				container.historyManager,
 				onRefresh
 			),
+			new TestConnectionCommand(container.outputChannel),
 		]);
 
 		// Register View Logs command

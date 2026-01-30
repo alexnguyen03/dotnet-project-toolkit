@@ -241,7 +241,32 @@ document.addEventListener('DOMContentLoaded', () => {
 			vscode.postMessage({ command: 'delete' });
 		});
 	}
+
+	// Test Connection button
+	const testBtn = document.getElementById('btnTestConnection');
+	if (testBtn) {
+		testBtn.addEventListener('click', () => {
+			const data = getFormData();
+			vscode.postMessage({ command: 'testConnection', data: data });
+		});
+	}
 });
+
+function getFormData() {
+	if (!window.currentData) return {};
+	return {
+		profileName: window.currentData.profileFileName,
+		environment: document.getElementById('environment').value,
+		publishUrl: document.getElementById('publishUrl').value.trim(),
+		siteName: document.getElementById('siteName').value.trim(),
+		siteUrl: document.getElementById('siteUrl').value || undefined,
+		username: document.getElementById('username').value.trim(),
+		password: document.getElementById('password').value || 'KEEP_EXISTING',
+		openBrowserOnDeploy: document.getElementById('openBrowserOnDeploy').checked,
+		enableStdoutLog: document.getElementById('enableStdoutLog').checked,
+		logPath: document.getElementById('logPath').value.trim() || undefined,
+	};
+}
 
 const form = document.getElementById('profileForm');
 if (form) {
