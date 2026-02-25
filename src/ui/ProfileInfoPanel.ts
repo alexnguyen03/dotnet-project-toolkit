@@ -121,6 +121,9 @@ export class ProfileInfoPanel {
 					case 'testConnection':
 						await this.handleTestConnection(message.data);
 						break;
+					case 'clone':
+						await this.handleCloneProfile(message.data);
+						break;
 				}
 			},
 			null,
@@ -550,6 +553,141 @@ export class ProfileInfoPanel {
 				}
 			}
 		);
+	}
+
+	private async handleCloneProfile(data: any): Promise<void> {
+		const targetEnv = data.targetEnvironment as DeployEnvironment;
+		const currentEnv = this.currentProfileInfo.environment;
+
+		// 1. Calculate new Name
+		let newName = this.currentProfileInfo.fileName;
+
+		const envKeywords: Record<string, string> = {
+			'dev': 'Dev',
+			'staging': 'Staging',
+			'uat': 'UAT',
+			'production': 'Prod',
+			'prod': 'Prod'
+		};
+
+		// Try to replace environment keyword in the name
+		// We use the enum values (dev, staging, production) as keys
+		// And also common variations
+
+		const currentKeyword = envKeywords[currentEnv] || currentEnv;
+		const targetKeyword = envKeywords[targetEnv] || targetEnv;
+
+		let nameChanged = false;
+
+		// Try replacing exact environment string (case insensitive)
+		const envRegex = new RegExp(currentEnv, 'i');
+		if (envRegex.test(newName)) {
+			newName = newName.replace(envRegex, targetEnv); // Replace with raw enum value first? Or keyword?
+			// Let's use the same casing convention if possible, but fallback to enum value
+			// Actually better to use the targetKeyword (PascalCase usually preferred in filenames)
+			newName = newName.replace(envRegex, targetKeyword);
+			nameChanged = true;
+		} else {
+			// Try replacing the keyword (e.g. they named it "MyApi_Prod" but env is "production")
+			const keywordRegex = new RegExp(currentKeyword, 'i');
+			if (keywordRegex.test(newName)) {
+				newName = newName.replace(keywordRegex, targetKeyword);
+				nameChanged = true;
+			}
+		}
+
+		if (!nameChanged) {
+			// Fallback: append environment
+			newName = `${newName}_${targetKeyword}`;
+		}
+
+		// 2. Prepare Project Info
+		let projectInfo: ProjectInfo;
+		if (this.projectInfo) {
+			projectInfo = this.projectInfo;
+		} else {
+			// Reconstruct minimal project info from current profile path
+			// Assuming standard structure: ProjectDir\Properties\PublishProfiles\Profile.pubxml
+			const projectDir = this.currentProfileInfo.path
+				? path.dirname(path.dirname(path.dirname(this.currentProfileInfo.path)))
+				: ''; // Approximate
+
+			projectInfo = {
+				name: this.currentProjectName,
+				projectDir: projectDir,
+				csprojPath: '', // Unknown, but ProfileService might handle it or not need it for creation if only path is used
+				projectType: 'unknown',
+				profiles: [],
+			};
+		}
+
+		this.outputChannel.appendLine(`[ProfileInfo] Cloning profile "${this.currentProfileInfo.fileName}" to "${newName}" (${targetEnv})`);
+
+		// 3. Open Create Wizard
+		ProfileInfoPanel.showForCreate(
+			this.extensionUri,
+			projectInfo,
+			newName,
+			targetEnv,
+			this.profileService,
+			this.passwordStorage,
+			this.historyManager,
+			this.outputChannel,
+			this.onRefresh
+		);
+
+		// 4. Pre-fill data in the new panel
+		// We need to wait a brief moment for the panel to be registered in the map
+		setTimeout(() => {
+			const newKey = `create:${projectInfo.name}:${newName}`;
+			const newPanel = ProfileInfoPanel.panels.get(newKey);
+
+			if (newPanel) {
+				// Inject current data
+				newPanel.currentProfileInfo = {
+					...newPanel.currentProfileInfo,
+					publishUrl: this.currentProfileInfo.publishUrl,
+					userName: this.currentProfileInfo.userName,
+					openBrowserOnDeploy: this.currentProfileInfo.openBrowserOnDeploy,
+					enableStdoutLog: this.currentProfileInfo.enableStdoutLog,
+					logPath: this.currentProfileInfo.logPath
+				};
+
+				// Handle Site Name replacement
+				if (this.currentProfileInfo.siteName) {
+					let newSiteName = this.currentProfileInfo.siteName;
+					const envRegex = new RegExp(currentEnv, 'i');
+					const keywordRegex = new RegExp(currentKeyword, 'i');
+
+					if (envRegex.test(newSiteName)) {
+						newSiteName = newSiteName.replace(envRegex, targetKeyword.toUpperCase()); // Site names often uppercase
+					} else if (keywordRegex.test(newSiteName)) {
+						newSiteName = newSiteName.replace(keywordRegex, targetKeyword.toUpperCase());
+					}
+					newPanel.currentProfileInfo.siteName = newSiteName;
+				}
+
+				// Handle Site URL replacement
+				if (this.currentProfileInfo.siteUrl) {
+					// URL replacements are tricky, usually lowercase
+					let newSiteUrl = this.currentProfileInfo.siteUrl;
+					// Try simple replacement
+					if (newSiteUrl.toLowerCase().includes(currentEnv.toLowerCase())) {
+						newSiteUrl = newSiteUrl.replace(new RegExp(currentEnv, 'i'), targetEnv.toLowerCase());
+					}
+					// If contains keyword
+					if (newSiteUrl.toLowerCase().includes(currentKeyword.toLowerCase())) {
+						newSiteUrl = newSiteUrl.replace(new RegExp(currentKeyword, 'i'), targetKeyword.toLowerCase());
+					}
+					newPanel.currentProfileInfo.siteUrl = newSiteUrl;
+				}
+
+				// Update the UI
+				newPanel.update();
+
+				vscode.window.showInformationMessage(`📋 Cloned to new profile: ${newName}`);
+			}
+		}, 500);
 	}
 
 	public dispose() {

@@ -133,30 +133,6 @@ export class DebugService {
 	}
 
 	/**
-	 * Run dotnet build for a project
-	 */
-	private async runBuild(project: ProjectInfo): Promise<boolean> {
-		try {
-			await vscode.window.withProgress(
-				{
-					location: vscode.ProgressLocation.Notification,
-					title: `Building ${project.name}...`,
-					cancellable: false,
-				},
-				async () => {
-					await exec(`dotnet build "${project.csprojPath}"`, { cwd: project.projectDir });
-				}
-			);
-			return true;
-		} catch (error: any) {
-			vscode.window.showErrorMessage(
-				`Build failed for ${project.name}. Check output for details.`
-			);
-			return false;
-		}
-	}
-
-	/**
 	 * Start debugging a single project
 	 */
 	public async startDebugging(project: ProjectInfo): Promise<void> {
@@ -171,11 +147,6 @@ export class DebugService {
 			vscode.window.showErrorMessage(
 				`Cannot debug ${project.name}: TargetFramework not found in .csproj`
 			);
-			return;
-		}
-
-		// Run build before debug
-		if (!(await this.runBuild(project))) {
 			return;
 		}
 
@@ -199,9 +170,9 @@ export class DebugService {
 				vscode.window
 					.showInformationMessage(
 						'Install one of these extensions:\n' +
-							'• C# Dev Kit (VS Code)\n' +
-							'• free-vscode-csharp (VSCodium/Open-source)\n\n' +
-							'Note: free-vscode-csharp requires NetCoreDbg to be installed.',
+						'• C# Dev Kit (VS Code)\n' +
+						'• free-vscode-csharp (VSCodium/Open-source)\n\n' +
+						'Note: free-vscode-csharp requires NetCoreDbg to be installed.',
 						'Open Extensions'
 					)
 					.then((choice) => {

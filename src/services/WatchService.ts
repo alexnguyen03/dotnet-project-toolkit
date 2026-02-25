@@ -34,32 +34,39 @@ export class WatchService {
 	/**
 	 * Start `dotnet watch` for a single project
 	 */
+	/**
+	 * Start `dotnet watch` for a single project
+	 */
 	public async runWatch(project: ProjectInfo, additionalArgs?: string): Promise<void> {
 		const key = this.normalizePath(project.csprojPath);
-
-		if (this.runningWatches.has(key)) {
-			vscode.window.showWarningMessage(`Watch is already running for ${project.name}`);
-			this.focusWatch(project.csprojPath);
-			return;
-		}
-
-		// Pre-flight check for SDK availability and global.json compatibility
-		if (!(await this.checkSdk(project.projectDir))) {
-			return;
-		}
-
-		// Run build before watch
-		if (!(await this.runBuild(project))) {
-			return;
-		}
-
 		const terminalName = `Watch: ${project.name}`;
-		const terminal = vscode.window.createTerminal({
-			name: terminalName,
-			cwd: project.projectDir,
-		});
 
-		// Add to tracking before showing to avoid race conditions if clear happens
+		// Try to find an existing terminal to reuse
+		// First check our tracked list
+		let terminal = this.runningWatches.get(key)?.terminal;
+
+		// If not in tracked list, check all validation terminals for one with the matching name
+		if (!terminal) {
+			terminal = vscode.window.terminals.find((t) => t.name === terminalName);
+		}
+
+		if (terminal) {
+			// If reusing, send Ctrl+C to stop any potential running process
+			terminal.sendText('\u0003');
+		} else {
+			// Only perform SDK check if we're creating a fresh terminal environment
+			// (If terminal exists, we assume SDK was fine before)
+			if (!(await this.checkSdk(project.projectDir))) {
+				return;
+			}
+
+			terminal = vscode.window.createTerminal({
+				name: terminalName,
+				cwd: project.projectDir,
+			});
+		}
+
+		// Update tracking (always overwrite to ensure latest state)
 		this.runningWatches.set(key, {
 			csprojPath: project.csprojPath,
 			terminal: terminal,
@@ -78,30 +85,6 @@ export class WatchService {
 
 		terminal.sendText(command);
 		this._onDidChangeRunningWatches.fire();
-	}
-
-	/**
-	 * Run dotnet build for a project
-	 */
-	private async runBuild(project: ProjectInfo): Promise<boolean> {
-		try {
-			await vscode.window.withProgress(
-				{
-					location: vscode.ProgressLocation.Notification,
-					title: `Building ${project.name}...`,
-					cancellable: false,
-				},
-				async () => {
-					await exec(`dotnet build "${project.csprojPath}"`, { cwd: project.projectDir });
-				}
-			);
-			return true;
-		} catch (error: any) {
-			vscode.window.showErrorMessage(
-				`Build failed for ${project.name}. Check output for details.`
-			);
-			return false;
-		}
 	}
 
 	/**
