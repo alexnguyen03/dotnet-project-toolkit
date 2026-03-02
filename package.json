@@ -181,6 +181,11 @@
 				"command": "dotnet-project-toolkit.testConnection",
 				"title": "Test Connection",
 				"icon": "$(broadcast)"
+			},
+			{
+				"command": "dotnet-project-toolkit.testNotification",
+				"title": ".NET Toolkit: Test Notification",
+				"icon": "$(broadcast)"
 			}
 		],
 		"viewsContainers": {
