@@ -35,6 +35,8 @@ import { ProjectAnalyzer } from '../analyzers/ProjectAnalyzer';
 import { ProfileXmlGenerator } from '../generators/ProfileXmlGenerator';
 import { ProfileRepository } from '../repositories/ProfileRepository';
 import { EnvironmentDetector } from '../detectors/EnvironmentDetector';
+import { WebConfigModifier, IWebConfigModifier } from '../services/WebConfigModifier';
+import { LogViewerService, ILogViewerService } from '../services/LogViewerService';
 
 /**
  * Service Container - Dependency Injection
@@ -63,7 +65,7 @@ export class ServiceContainer {
 	readonly publishTreeProvider: PublishTreeProvider;
 	readonly runService: RunService;
 	readonly runTreeProvider: RunTreeProvider;
-	readonly logViewerService: any; // Will be typed properly
+	readonly logViewerService: ILogViewerService;
 
 	private constructor(context: vscode.ExtensionContext) {
 		// Create output channel
@@ -106,14 +108,10 @@ export class ServiceContainer {
 		);
 
 		// Create WebConfigModifier
-		const webConfigModifier = new (require('../services/WebConfigModifier').WebConfigModifier)(
-			this.outputChannel
-		);
+		const webConfigModifier: IWebConfigModifier = new WebConfigModifier(this.outputChannel);
 
 		// Create LogViewerService
-		this.logViewerService = new (require('../services/LogViewerService').LogViewerService)(
-			this.outputChannel
-		);
+		this.logViewerService = new LogViewerService(this.outputChannel);
 
 		// Create other services
 		this.deploymentService = new DeploymentService(

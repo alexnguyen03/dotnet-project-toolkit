@@ -117,19 +117,15 @@ export class DebugService {
 	/**
 	 * Check if coreclr debugger is available
 	 */
-	private async isDebuggerAvailable(): Promise<boolean> {
-		try {
-			// Try to get available debug types
-			const debuggers = await vscode.debug.startDebugging(undefined, {
-				type: 'coreclr',
-				name: 'test',
-				request: 'launch',
-				program: 'test',
-			});
-			return true;
-		} catch {
-			return false;
-		}
+	private isDebuggerAvailable(): boolean {
+		const extension = vscode.extensions.all.find(
+			(ext) =>
+				ext.id === 'ms-dotnettools.csharp' ||
+				ext.id === 'ms-dotnettools.csdevkit' ||
+				ext.id === 'muhammad-sammy.csharp'
+		);
+
+		return extension !== undefined && extension.isActive;
 	}
 
 	/**
@@ -170,9 +166,9 @@ export class DebugService {
 				vscode.window
 					.showInformationMessage(
 						'Install one of these extensions:\n' +
-						'• C# Dev Kit (VS Code)\n' +
-						'• free-vscode-csharp (VSCodium/Open-source)\n\n' +
-						'Note: free-vscode-csharp requires NetCoreDbg to be installed.',
+							'• C# Dev Kit (VS Code)\n' +
+							'• free-vscode-csharp (VSCodium/Open-source)\n\n' +
+							'Note: free-vscode-csharp requires NetCoreDbg to be installed.',
 						'Open Extensions'
 					)
 					.then((choice) => {

@@ -14,6 +14,13 @@ export class EnvVarPasswordStorage extends BasePasswordStorage {
 	readonly type = 'envvar' as const;
 
 	async store(key: string, value: string): Promise<boolean> {
+		if (!key || !value) {
+			this.log('Error: Key and value are required');
+			return false;
+		}
+		this.log(
+			'WARNING: EnvVar storage is less secure. Passwords will be visible to all processes.'
+		);
 		try {
 			if (os.platform() === 'win32') {
 				return await this.storeWindows(key, value);
@@ -27,12 +34,25 @@ export class EnvVarPasswordStorage extends BasePasswordStorage {
 	}
 
 	async retrieve(key: string): Promise<string | undefined> {
+		if (!key) {
+			this.log('Warning: Empty key provided to retrieve');
+			return undefined;
+		}
 		return process.env[key];
 	}
 
 	async delete(key: string): Promise<boolean> {
-		// OS env vars can't be easily deleted, just log the key
-		this.log(`To delete ${key}, manually remove from environment`);
+		if (!key) {
+			this.log('Warning: Empty key provided to delete');
+			return false;
+		}
+		this.log(`Cannot programmatically delete environment variable ${key}`);
+		this.log(`To delete manually:`);
+		if (os.platform() === 'win32') {
+			this.log(`  Run: reg delete "HKCU\\Environment" /v ${key} /f`);
+		} else {
+			this.log(`  Remove the export line from your shell profile (.bashrc, .zshrc, etc.)`);
+		}
 		return true;
 	}
 
@@ -67,8 +87,20 @@ export class EnvVarPasswordStorage extends BasePasswordStorage {
 		}
 
 		try {
-			fs.appendFileSync(existingProfile, `\nexport ${key}="${value}"\n`);
-			this.log(`✓ Added to ${path.basename(existingProfile)}`);
+			const content = fs.readFileSync(existingProfile, 'utf-8');
+			const exportPattern = new RegExp(`^export\\s+${key}=`, 'm');
+
+			if (exportPattern.test(content)) {
+				const updatedContent = content.replace(
+					exportPattern,
+					`# Updated by .NET Toolkit\nexport ${key}="${value}"`
+				);
+				fs.writeFileSync(existingProfile, updatedContent);
+				this.log(`Updated existing entry in ${path.basename(existingProfile)}`);
+			} else {
+				fs.appendFileSync(existingProfile, `\nexport ${key}="${value}"\n`);
+				this.log(`Added to ${path.basename(existingProfile)}`);
+			}
 			return true;
 		} catch (error) {
 			this.log(`Error writing: ${error}`);

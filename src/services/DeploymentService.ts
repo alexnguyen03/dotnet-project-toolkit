@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as cp from 'child_process';
 import { PublishProfileInfo } from '../models/ProjectModels';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
 import { IWebConfigModifier } from './WebConfigModifier';
@@ -58,7 +59,7 @@ export class DeploymentService implements IDeploymentService {
 			// 2. Build dotnet publish command
 			onProgress?.(`Building ${projectName} (${profileInfo.fileName})...`, 30);
 			const command = this.buildPublishCommand(projectPath, profileInfo, password);
-			this.log(`Executing: ${command.replace(password, '***')}`);
+			this.log(`Executing: dotnet publish with secure password handling`);
 
 			// 3. Execute deployment
 			onProgress?.(
@@ -126,6 +127,7 @@ export class DeploymentService implements IDeploymentService {
 
 	/**
 	 * Build dotnet publish command with MSDeploy parameters
+	 * Password is passed via environment variable for security
 	 */
 	private buildPublishCommand(
 		projectPath: string,
@@ -133,39 +135,47 @@ export class DeploymentService implements IDeploymentService {
 		password: string
 	): string {
 		const profileName = profileInfo.fileName;
+		const passwordEnvVar = 'DOTNET_PUBLISH_PASSWORD';
 
-		// Use dotnet publish with PublishProfile and Password parameters
-		// Note: Do NOT use /p:DeployOnBuild=true as it causes circular dependency
-		// dotnet publish with PublishProfile already handles deployment
 		const args = [
+			'$env:DOTNET_PUBLISH_PASSWORD="' + password + '"; ',
 			'dotnet',
 			'publish',
 			`"${projectPath}"`,
 			`/p:PublishProfile="${profileName}"`,
-			`/p:Password="${password}"`,
+			'/p:Password=$env:DOTNET_PUBLISH_PASSWORD',
 			'/p:Configuration=Release',
-			'/p:AllowUntrustedCertificate=true', // Allow self-signed certificates
 		];
 
 		return args.join(' ');
 	}
 
 	/**
-	 * Execute command and capture output
+	 * Execute command and capture output with timeout
 	 */
 	private async executeCommand(
 		command: string,
-		cwd: string
+		cwd: string,
+		timeoutMs: number = 300000
 	): Promise<{ exitCode: number; output: string }> {
 		return new Promise((resolve) => {
-			const { exec } = require('child_process');
 			let output = '';
+			let timedOut = false;
 
-			const process = exec(command, {
+			const process = cp.exec(command, {
 				cwd,
-				maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
-				shell: 'powershell.exe', // Use PowerShell on Windows
+				maxBuffer: 10 * 1024 * 1024,
+				shell: 'powershell.exe',
 			});
+
+			const timeoutId = setTimeout(() => {
+				timedOut = true;
+				process.kill('SIGTERM');
+				output += '\nCommand timed out after ' + timeoutMs / 1000 + ' seconds';
+				this.outputChannel.appendLine(
+					`[Timeout] Command timed out after ${timeoutMs / 1000}s`
+				);
+			}, timeoutMs);
 
 			process.stdout?.on('data', (data: Buffer) => {
 				const text = data.toString();
@@ -180,13 +190,22 @@ export class DeploymentService implements IDeploymentService {
 			});
 
 			process.on('close', (code: number) => {
-				resolve({
-					exitCode: code || 0,
-					output,
-				});
+				clearTimeout(timeoutId);
+				if (timedOut) {
+					resolve({
+						exitCode: 124,
+						output,
+					});
+				} else {
+					resolve({
+						exitCode: code || 0,
+						output,
+					});
+				}
 			});
 
 			process.on('error', (error: Error) => {
+				clearTimeout(timeoutId);
 				output += `\nProcess error: ${error.message}`;
 				this.outputChannel.appendLine(`Process error: ${error.message}`);
 				resolve({

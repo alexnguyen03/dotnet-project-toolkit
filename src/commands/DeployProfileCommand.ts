@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ICommand } from './ICommand';
 import { PublishTreeItem } from '../ui/publish/PublishTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
@@ -20,30 +22,6 @@ export class DeployProfileCommand implements ICommand {
 	) {}
 
 	async execute(item: PublishTreeItem): Promise<void> {
-		// Debug: Log what we received
-		this.outputChannel.appendLine('=== DeployProfileCommand.execute ===');
-		this.outputChannel.appendLine(
-			`[Deploy] Received item type: ${item?.constructor?.name || 'unknown'}`
-		);
-		this.outputChannel.appendLine(`[Deploy] item.contextValue: ${item?.contextValue}`);
-		this.outputChannel.appendLine(`[Deploy] item.label: ${item?.label}`);
-		this.outputChannel.appendLine(`[Deploy] item.projectName: ${item?.projectName}`);
-		this.outputChannel.appendLine(`[Deploy] item.projectInfo: ${!!item?.projectInfo}`);
-		this.outputChannel.appendLine(`[Deploy] item.profileInfo: ${!!item?.profileInfo}`);
-		this.outputChannel.appendLine(
-			`[Deploy] item.csprojPath: ${item?.csprojPath || 'undefined'}`
-		);
-		this.outputChannel.appendLine(
-			`[Deploy] item.projectPath (getter): ${item?.projectPath || 'undefined'}`
-		);
-
-		// Log all properties
-		if (item) {
-			this.outputChannel.appendLine(
-				`[Deploy] All item properties: ${JSON.stringify(Object.keys(item))}`
-			);
-		}
-
 		if (!item || !item.profileInfo) {
 			vscode.window.showErrorMessage('No publish profile selected');
 			return;
@@ -69,9 +47,6 @@ export class DeployProfileCommand implements ICommand {
 			);
 
 			// Try to find .csproj in project directory
-			const fs = require('fs');
-			const path = require('path');
-
 			try {
 				if (fs.existsSync(projectDir)) {
 					const files = fs.readdirSync(projectDir);
@@ -187,17 +162,20 @@ export class DeployProfileCommand implements ICommand {
 			const openBrowser = profile.openBrowserOnDeploy ?? globalOpenBrowser;
 
 			if (openBrowser && profile.siteUrl) {
-				this.outputChannel.appendLine(`[Browser] Opening site: ${profile.siteUrl}`);
 				try {
+					const url = new URL(profile.siteUrl);
+					this.outputChannel.appendLine(`[Browser] Opening site: ${profile.siteUrl}`);
 					await vscode.env.openExternal(vscode.Uri.parse(profile.siteUrl));
 					vscode.window.showInformationMessage(
 						`✅ ${profile.name} deployed. Opened ${profile.siteUrl}`
 					);
 					this.outputChannel.appendLine(`[Browser] Opened: ${profile.siteUrl}`);
 				} catch (err) {
-					this.outputChannel.appendLine(`[Browser] Failed to open: ${err}`);
-					vscode.window.showInformationMessage(
-						`✅ ${profile.name} deployed successfully!`
+					this.outputChannel.appendLine(
+						`[Browser] Failed to open: Invalid URL or ${err}`
+					);
+					vscode.window.showWarningMessage(
+						`Invalid URL: ${profile.siteUrl}. Deployment succeeded but browser could not be opened.`
 					);
 				}
 			} else {

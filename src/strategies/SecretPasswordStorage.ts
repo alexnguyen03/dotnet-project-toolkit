@@ -19,9 +19,13 @@ export class SecretPasswordStorage extends BasePasswordStorage {
 	}
 
 	async store(key: string, value: string): Promise<boolean> {
+		if (!key || !value) {
+			this.log('Error: Key and value are required');
+			return false;
+		}
 		try {
 			await this.secrets.store(key, value);
-			this.log(`✓ Stored securely: ${key}`);
+			this.log(`Stored securely: ${key}`);
 			return true;
 		} catch (error) {
 			this.log(`Error storing: ${error}`);
@@ -30,6 +34,10 @@ export class SecretPasswordStorage extends BasePasswordStorage {
 	}
 
 	async retrieve(key: string): Promise<string | undefined> {
+		if (!key) {
+			this.log('Warning: Empty key provided to retrieve');
+			return undefined;
+		}
 		try {
 			return await this.secrets.get(key);
 		} catch (error) {
@@ -39,9 +47,13 @@ export class SecretPasswordStorage extends BasePasswordStorage {
 	}
 
 	async delete(key: string): Promise<boolean> {
+		if (!key) {
+			this.log('Warning: Empty key provided to delete');
+			return false;
+		}
 		try {
 			await this.secrets.delete(key);
-			this.log(`✓ Deleted: ${key}`);
+			this.log(`Deleted: ${key}`);
 			return true;
 		} catch (error) {
 			this.log(`Error deleting: ${error}`);

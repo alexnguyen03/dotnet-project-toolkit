@@ -41,21 +41,16 @@ export class WatchService {
 		const key = this.normalizePath(project.csprojPath);
 		const terminalName = `Watch: ${project.name}`;
 
-		// Try to find an existing terminal to reuse
-		// First check our tracked list
 		let terminal = this.runningWatches.get(key)?.terminal;
 
-		// If not in tracked list, check all validation terminals for one with the matching name
 		if (!terminal) {
 			terminal = vscode.window.terminals.find((t) => t.name === terminalName);
 		}
 
 		if (terminal) {
-			// If reusing, send Ctrl+C to stop any potential running process
 			terminal.sendText('\u0003');
+			await new Promise((resolve) => setTimeout(resolve, 500));
 		} else {
-			// Only perform SDK check if we're creating a fresh terminal environment
-			// (If terminal exists, we assume SDK was fine before)
 			if (!(await this.checkSdk(project.projectDir))) {
 				return;
 			}
@@ -66,7 +61,6 @@ export class WatchService {
 			});
 		}
 
-		// Update tracking (always overwrite to ensure latest state)
 		this.runningWatches.set(key, {
 			csprojPath: project.csprojPath,
 			terminal: terminal,
@@ -75,8 +69,6 @@ export class WatchService {
 
 		terminal.show();
 
-		// Build command: dotnet watch run --project <path> [args]
-		// We use --project to be explicit
 		let command = `dotnet watch run --project "${project.csprojPath}"`;
 
 		if (additionalArgs) {
