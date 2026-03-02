@@ -140,6 +140,23 @@ View past deployments in the **History** view.
 
 - Shows status (Success/Failure) and duration.
 
+### 8. Deployment Rollback
+
+Rollback to a previous deployment version:
+
+1. Open the **History** view in the .NET Toolkit sidebar
+2. Right-click on a successful deployment
+3. Select **Rollback** from the context menu
+4. Confirm the rollback action
+
+**How it works:**
+
+- Before each deployment, the extension creates a backup of the published files
+- When rolling back, it restores the files from the backup and redeploys
+- Backups are stored in the system's temp folder
+
+**Note:** Rollback is only available for successful deployments that have a backup.
+
 ---
 
 ## Configuration
