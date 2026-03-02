@@ -34,157 +34,157 @@
 		"commands": [
 			{
 				"command": "dotnet-project-toolkit.deployToStagingApi",
-				"title": ".NET Toolkit: Deploy API to Staging",
+				"title": ".NET Project Toolkit: Deploy API to Staging",
 				"icon": "$(rocket)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deployToStagingClient",
-				"title": ".NET Toolkit: Deploy Client to Staging",
+				"title": ".NET Project Toolkit: Deploy Client to Staging",
 				"icon": "$(rocket)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deployToProdApi",
-				"title": ".NET Toolkit: Deploy API to Production",
+				"title": ".NET Project Toolkit: Deploy API to Production",
 				"icon": "$(warning)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deployToProdClient",
-				"title": ".NET Toolkit: Deploy Client to Production",
+				"title": ".NET Project Toolkit: Deploy Client to Production",
 				"icon": "$(warning)"
 			},
 			{
 				"command": "dotnet-project-toolkit.selectProfile",
-				"title": ".NET Toolkit: Select Publish Profile",
+				"title": ".NET Project Toolkit: Select Publish Profile",
 				"icon": "$(list-selection)"
 			},
 			{
 				"command": "dotnet-project-toolkit.configureCredentials",
-				"title": ".NET Toolkit: Configure Deployment Credentials",
+				"title": ".NET Project Toolkit: Configure Deployment Credentials",
 				"icon": "$(key)"
 			},
 			{
 				"command": "dotnet-project-toolkit.refreshHistory",
-				"title": ".NET Toolkit: Refresh Deployment History",
+				"title": ".NET Project Toolkit: Refresh Deployment History",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "dotnet-project-toolkit.clearHistory",
-				"title": ".NET Toolkit: Clear All Deployment History",
+				"title": ".NET Project Toolkit: Clear All Deployment History",
 				"icon": "$(trash)"
 			},
 			{
 				"command": "dotnet-project-toolkit.clearHistoryEntry",
-				"title": ".NET Toolkit: Clear History Entry",
+				"title": ".NET Project Toolkit: Clear History Entry",
 				"icon": "$(close)"
 			},
 			{
 				"command": "dotnet-project-toolkit.refreshProfiles",
-				"title": ".NET Toolkit: Refresh Publish Profiles",
+				"title": ".NET Project Toolkit: Refresh Publish Profiles",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "dotnet-project-toolkit.createPublishProfile",
-				"title": ".NET Toolkit: Create Publish Profile",
+				"title": ".NET Project Toolkit: Create Publish Profile",
 				"icon": "$(add)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deletePublishProfile",
-				"title": ".NET Toolkit: Delete Publish Profile",
+				"title": ".NET Project Toolkit: Delete Publish Profile",
 				"icon": "$(trash)"
 			},
 			{
 				"command": "dotnet-project-toolkit.profileInfo",
-				"title": ".NET Toolkit: Profile Info",
+				"title": ".NET Project Toolkit: Profile Info",
 				"icon": "$(info)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deployProfile",
-				"title": ".NET Toolkit: Deploy Profile",
+				"title": ".NET Project Toolkit: Deploy Profile",
 				"icon": "$(rocket)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.start",
-				"title": "Start Watch",
+				"title": ".NET Project Toolkit: Start Watch",
 				"icon": "$(play)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.stop",
-				"title": "Stop Watch",
+				"title": ".NET Project Toolkit: Stop Watch",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.stopAll",
-				"title": "Stop All Watches",
+				"title": ".NET Project Toolkit: Stop All Watches",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.createGroup",
-				"title": "Create Watch Group",
+				"title": ".NET Project Toolkit: Create Watch Group",
 				"icon": "$(add)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.deleteGroup",
-				"title": "Delete Watch Group",
+				"title": ".NET Project Toolkit: Delete Watch Group",
 				"icon": "$(trash)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.runGroup",
-				"title": "Run Watch Group",
+				"title": ".NET Project Toolkit: Run Watch Group",
 				"icon": "$(play)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.stopGroup",
-				"title": "Stop Watch Group",
+				"title": ".NET Project Toolkit: Stop Watch Group",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.start",
-				"title": "Start Debugging",
+				"title": ".NET Project Toolkit: Start Debugging",
 				"icon": "$(debug-start)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.stop",
-				"title": "Stop Debugging",
+				"title": ".NET Project Toolkit: Stop Debugging",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.createGroup",
-				"title": "Create Debug Group",
+				"title": ".NET Project Toolkit: Create Debug Group",
 				"icon": "$(add)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.runGroup",
-				"title": "Run Debug Group",
+				"title": ".NET Project Toolkit: Run Debug Group",
 				"icon": "$(debug-start)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.stopGroup",
-				"title": "Stop Debug Group",
+				"title": ".NET Project Toolkit: Stop Debug Group",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.deleteGroup",
-				"title": "Delete Debug Group",
+				"title": ".NET Project Toolkit: Delete Debug Group",
 				"icon": "$(trash)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.stopAll",
-				"title": "Stop All Debugging",
+				"title": ".NET Project Toolkit: Stop All Debugging",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.run.reload",
-				"title": "Reload/Restart",
+				"title": ".NET Project Toolkit: Reload/Restart",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "dotnet-project-toolkit.testConnection",
-				"title": "Test Connection",
+				"title": ".NET Project Toolkit: Test Connection",
 				"icon": "$(broadcast)"
 			},
 			{
 				"command": "dotnet-project-toolkit.testNotification",
-				"title": ".NET Toolkit: Test Notification",
+				"title": ".NET Project Toolkit: Test Notification",
 				"icon": "$(broadcast)"
 			}
 		],
