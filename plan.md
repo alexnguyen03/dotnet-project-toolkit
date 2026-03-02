@@ -103,7 +103,7 @@
 | 6   | Profile Import/Export      | Medium   | ⬜      |
 | 7   | SSH Connection Support     | Medium   | ⬜      |
 | 8   | Azure App Service          | Medium   | ⬜      |
-| 9   | Slack/Teams Notifications  | Medium   | ⬜      |
+| 9   | Slack/Teams Notifications  | Medium   | ✅ Done |
 | 10  | Deployment Scheduling      | Medium   | ⬜      |
 | 11  | Log Search                 | Low      | ⬜      |
 | 12  | Deployment Statistics      | Low      | ⬜      |
@@ -118,18 +118,18 @@
 ### v0.2.0 (Next Release)
 
 - [ ] Batch/Multi-project Deploy
-- [ ] Health Check sau Deploy
+- [x] Health Check sau Deploy
 - [ ] Profile Templates
 - [ ] Profile Import/Export
+- [x] Slack/Teams Notifications
 
 ### v0.3.0
 
 - [ ] Docker Deployment Support
-- [ ] Deployment Rollback
+- [x] Deployment Rollback
 
 ### v0.4.0
 
-- [ ] Slack/Teams Notifications
 - [ ] Deployment Scheduling
 
 ### v1.0.0

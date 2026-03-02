@@ -502,6 +502,26 @@
 					"type": "number",
 					"default": 3,
 					"description": "Number of retry attempts for health check if initial check fails"
+				},
+				"dotnetToolkit.notificationPlatform": {
+					"type": "string",
+					"enum": [
+						"none",
+						"slack",
+						"teams"
+					],
+					"default": "none",
+					"description": "Notification platform to send deployment updates (none, slack, or teams)"
+				},
+				"dotnetToolkit.slackWebhookUrl": {
+					"type": "string",
+					"default": "",
+					"description": "Slack webhook URL for deployment notifications"
+				},
+				"dotnetToolkit.teamsWebhookUrl": {
+					"type": "string",
+					"default": "",
+					"description": "Microsoft Teams webhook URL for deployment notifications"
 				}
 			}
 		}

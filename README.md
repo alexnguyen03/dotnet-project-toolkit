@@ -146,11 +146,64 @@ View past deployments in the **History** view.
 
 **Settings (`Ctrl+,` -> search "dotnet toolkit"):**
 
-| Setting                             | Default  | Description                                                   |
-| :---------------------------------- | :------- | :------------------------------------------------------------ |
-| `dotnetToolkit.passwordStorage`     | `secret` | Use `secret` (encrypted) or `envvar` (environment variables). |
-| `dotnetToolkit.openBrowserOnDeploy` | `true`   | Open browser after deployment.                                |
-| `dotnetWorkspace.dotnetPath`        | `dotnet` | Path to dotnet CLI.                                           |
+| Setting                               | Default  | Description                                                   |
+| :------------------------------------ | :------- | :------------------------------------------------------------ |
+| `dotnetToolkit.passwordStorage`       | `secret` | Use `secret` (encrypted) or `envvar` (environment variables). |
+| `dotnetToolkit.openBrowserOnDeploy`   | `true`   | Open browser after deployment.                                |
+| `dotnetToolkit.enableHealthCheck`     | `true`   | Enable health check after deployment.                         |
+| `dotnetToolkit.healthCheckTimeout`    | `10000`  | Health check timeout in milliseconds.                         |
+| `dotnetToolkit.healthCheckRetryCount` | `3`      | Number of retry attempts for health check.                    |
+| `dotnetToolkit.notificationPlatform`  | `none`   | Notification platform: `none`, `slack`, or `teams`.           |
+| `dotnetWorkspace.dotnetPath`          | `dotnet` | Path to dotnet CLI.                                           |
+
+---
+
+## Notifications
+
+### Slack Setup
+
+1. **Create a Slack App** (if you don't have one):
+    - Go to [Slack API](https://api.slack.com/apps)
+    - Click "Create New App" → "From scratch"
+    - Name your app and select your workspace
+
+2. **Enable Incoming Webhooks**:
+    - Go to "Incoming Webhooks" in the left menu
+    - Toggle "Activate Incoming Webhooks" to ON
+    - Click "Add New Webhook to Workspace"
+    - Select the channel where you want notifications
+    - Copy the webhook URL
+
+3. **Configure in VS Code**:
+    - Press `Ctrl+,` to open settings
+    - Search for "dotnet toolkit"
+    - Set `dotnetToolkit.notificationPlatform` to `slack`
+    - Set `dotnetToolkit.slackWebhookUrl` to your webhook URL
+
+### Microsoft Teams Setup
+
+1. **Create an Incoming Webhook**:
+    - Go to your Teams channel
+    - Click "..." → "Manage channel" → "Connectors"
+    - Find "Incoming Webhook" and click "Configure"
+    - Give it a name and click "Create"
+    - Copy the webhook URL
+
+2. **Configure in VS Code**:
+    - Press `Ctrl+,` to open settings
+    - Search for "dotnet toolkit"
+    - Set `dotnetToolkit.notificationPlatform` to `teams`
+    - Set `dotnetToolkit.teamsWebhookUrl` to your webhook URL
+
+### Notification Content
+
+After each deployment, you'll receive a notification with:
+
+- **Project name**
+- **Environment** (DEV/STAGING/PROD)
+- **Profile name**
+- **Duration**
+- **Status** (Success/Failed)
 
 ---
 

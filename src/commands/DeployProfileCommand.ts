@@ -6,6 +6,7 @@ import { PublishTreeItem } from '../ui/publish/PublishTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
 import { PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IDeploymentService } from '../services/DeploymentService';
+import { NotificationService } from '../services/NotificationService';
 
 /**
  * Deploy Profile Command
@@ -19,7 +20,11 @@ export class DeployProfileCommand implements ICommand {
 		private readonly onRefresh: () => void,
 		private readonly historyManager: HistoryManager,
 		private readonly deploymentService: IDeploymentService
-	) {}
+	) {
+		this.notificationService = new NotificationService(outputChannel);
+	}
+
+	private notificationService: NotificationService;
 
 	async execute(item: PublishTreeItem): Promise<void> {
 		if (!item || !item.profileInfo) {
@@ -186,6 +191,12 @@ export class DeployProfileCommand implements ICommand {
 				}
 				vscode.window.showInformationMessage(`✅ ${profile.name} deployed successfully!`);
 			}
+
+			// 6. Send notification
+			const record = this.historyManager.getRecord(historyId);
+			if (record) {
+				await this.notificationService.sendDeploymentNotification(record);
+			}
 		} catch (error: any) {
 			// 5. Update history with failure
 			const endTime = new Date();
@@ -202,6 +213,12 @@ export class DeployProfileCommand implements ICommand {
 
 			vscode.window.showErrorMessage(`❌ Deployment failed: ${error.message}`);
 			this.outputChannel.appendLine(`[Error] Deployment failed: ${error.message}`);
+
+			// Send notification for failure
+			const failedRecord = this.historyManager.getRecord(historyId);
+			if (failedRecord) {
+				await this.notificationService.sendDeploymentNotification(failedRecord);
+			}
 		} finally {
 			this.onRefresh();
 		}
