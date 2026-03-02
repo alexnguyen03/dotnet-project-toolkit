@@ -93,23 +93,23 @@
 
 ## Progress Tracking
 
-| #   | Feature                    | Priority | Status |
-| --- | -------------------------- | -------- | ------ |
-| 1   | Docker Deployment Support  | High     | ⬜     |
-| 2   | Batch/Multi-project Deploy | High     | ⬜     |
-| 3   | Deployment Rollback        | High     | ⬜     |
-| 4   | Health Check sau Deploy    | High     | ⬜     |
-| 5   | Profile Templates          | Medium   | ⬜     |
-| 6   | Profile Import/Export      | Medium   | ⬜     |
-| 7   | SSH Connection Support     | Medium   | ⬜     |
-| 8   | Azure App Service          | Medium   | ⬜     |
-| 9   | Slack/Teams Notifications  | Medium   | ⬜     |
-| 10  | Deployment Scheduling      | Medium   | ⬜     |
-| 11  | Log Search                 | Low      | ⬜     |
-| 12  | Deployment Statistics      | Low      | ⬜     |
-| 13  | Remote Debugging           | Low      | ⬜     |
-| 14  | Incremental Deploy         | Low      | ⬜     |
-| 15  | Custom Environments        | Low      | ⬜     |
+| #   | Feature                    | Priority | Status  |
+| --- | -------------------------- | -------- | ------- |
+| 1   | Docker Deployment Support  | High     | ⬜      |
+| 2   | Batch/Multi-project Deploy | High     | ⬜      |
+| 3   | Deployment Rollback        | High     | ✅ Done |
+| 4   | Health Check sau Deploy    | High     | ✅ Done |
+| 5   | Profile Templates          | Medium   | ⬜      |
+| 6   | Profile Import/Export      | Medium   | ⬜      |
+| 7   | SSH Connection Support     | Medium   | ⬜      |
+| 8   | Azure App Service          | Medium   | ⬜      |
+| 9   | Slack/Teams Notifications  | Medium   | ⬜      |
+| 10  | Deployment Scheduling      | Medium   | ⬜      |
+| 11  | Log Search                 | Low      | ⬜      |
+| 12  | Deployment Statistics      | Low      | ⬜      |
+| 13  | Remote Debugging           | Low      | ⬜      |
+| 14  | Incremental Deploy         | Low      | ⬜      |
+| 15  | Custom Environments        | Low      | ⬜      |
 
 ---
 

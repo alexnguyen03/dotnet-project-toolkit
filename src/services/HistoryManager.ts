@@ -78,6 +78,20 @@ export class HistoryManager {
 	}
 
 	/**
+	 * Get a specific deployment record by ID
+	 */
+	getRecord(id: string): DeploymentRecord | undefined {
+		return this.historyCache.find((r) => r.id === id);
+	}
+
+	/**
+	 * Get recent successful deployments that have backups
+	 */
+	getRollbackCandidates(): DeploymentRecord[] {
+		return this.historyCache.filter((r) => r.status === 'success' && r.backupPath).slice(0, 10);
+	}
+
+	/**
 	 * Clear all history
 	 */
 	async clearHistory(): Promise<void> {

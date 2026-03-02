@@ -10,6 +10,12 @@ export interface DeploymentRecord {
 	endTime?: string; // ISO string
 	duration?: number; // milliseconds
 	errorMessage?: string;
+	healthCheckUrl?: string;
+	healthCheckStatus?: 'passed' | 'failed' | 'skipped';
+	healthCheckResponseTime?: number;
+	backupPath?: string;
+	isRollback?: boolean;
+	rollbackFromId?: string;
 }
 
 export class DeploymentRecordHelper {

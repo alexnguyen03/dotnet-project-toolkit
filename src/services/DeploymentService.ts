@@ -4,6 +4,7 @@ import * as cp from 'child_process';
 import { PublishProfileInfo } from '../models/ProjectModels';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
 import { IWebConfigModifier } from './WebConfigModifier';
+import { HealthCheckService } from './HealthCheckService';
 
 /**
  * Deployment result
@@ -12,6 +13,12 @@ export interface DeploymentResult {
 	success: boolean;
 	errorMessage?: string;
 	output: string;
+	healthCheckResult?: {
+		success: boolean;
+		statusCode?: number;
+		responseTime?: number;
+		error?: string;
+	};
 }
 
 /**
@@ -32,11 +39,15 @@ export interface IDeploymentService {
  * Executes dotnet publish with MSDeploy parameters
  */
 export class DeploymentService implements IDeploymentService {
+	private healthCheckService: HealthCheckService;
+
 	constructor(
 		private readonly outputChannel: vscode.OutputChannel,
 		private readonly passwordStorage: IPasswordStorage,
 		private readonly webConfigModifier?: IWebConfigModifier
-	) {}
+	) {
+		this.healthCheckService = new HealthCheckService(outputChannel);
+	}
 
 	async deploy(
 		projectPath: string,
@@ -84,8 +95,44 @@ export class DeploymentService implements IDeploymentService {
 							true
 						);
 					} catch (error: any) {
-						// Log but don't fail deployment
 						this.log(`Warning: Could not modify web.config: ${error.message}`);
+					}
+				}
+
+				// 6. Health check if siteUrl is available
+				let healthCheckResult: DeploymentResult['healthCheckResult'];
+				if (profileInfo.siteUrl) {
+					onProgress?.('Running health check...', 95);
+					this.outputChannel.appendLine(
+						`[HealthCheck] Checking ${profileInfo.siteUrl}...`
+					);
+
+					const config = vscode.workspace.getConfiguration('dotnetToolkit');
+					const enableHealthCheck = config.get<boolean>('enableHealthCheck', true);
+					const healthCheckTimeout = config.get<number>('healthCheckTimeout', 10000);
+					const retryCount = config.get<number>('healthCheckRetryCount', 3);
+
+					if (enableHealthCheck) {
+						healthCheckResult = await this.healthCheckService.checkWithRetry(
+							profileInfo.siteUrl,
+							retryCount,
+							2000
+						);
+
+						if (healthCheckResult.success) {
+							this.outputChannel.appendLine(
+								`[HealthCheck] ✓ Site is healthy (${healthCheckResult.statusCode}, ${healthCheckResult.responseTime}ms)`
+							);
+						} else {
+							this.outputChannel.appendLine(
+								`[HealthCheck] ⚠️ Site may not be ready: ${healthCheckResult.error}`
+							);
+						}
+					} else {
+						this.outputChannel.appendLine(
+							`[HealthCheck] Skipped (disabled in settings)`
+						);
+						healthCheckResult = { success: false, error: 'Disabled' };
 					}
 				}
 
@@ -96,6 +143,7 @@ export class DeploymentService implements IDeploymentService {
 				return {
 					success: true,
 					output: result.output,
+					healthCheckResult,
 				};
 			} else {
 				return {
