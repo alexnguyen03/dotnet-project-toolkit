@@ -12,6 +12,8 @@ import { EditProfileCommand } from '../commands/EditProfileCommand';
 import { ProfileInfoCommand } from '../commands/ProfileInfoCommand';
 import { TestConnectionCommand } from '../commands/TestConnectionCommand';
 import { TestNotificationCommand } from '../commands/TestNotificationCommand';
+import { ProfileExportCommand } from '../commands/ProfileExportCommand';
+import { ProfileImportCommand } from '../commands/ProfileImportCommand';
 import { RefreshCommand } from '../commands/RefreshCommand';
 import { UnifiedTreeProvider } from '../ui/UnifiedTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
@@ -202,6 +204,11 @@ export class ServiceContainer {
 				onRefresh
 			),
 			new EditProfileCommand(container.outputChannel, container.profileService, onRefresh),
+			new ProfileExportCommand(
+				container.outputChannel,
+				container.profileService as ProfileService
+			),
+			new ProfileImportCommand(container.outputChannel, onRefresh),
 			new ProfileInfoCommand(
 				container.outputChannel,
 				context.extensionUri,

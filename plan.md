@@ -100,7 +100,7 @@
 | 3   | Deployment Rollback        | High     | ✅ Done |
 | 4   | Health Check sau Deploy    | High     | ✅ Done |
 | 5   | Profile Templates          | Medium   | ⬜      |
-| 6   | Profile Import/Export      | Medium   | ⬜      |
+| 6   | Profile Import/Export      | Medium   | ✅ Done |
 | 7   | SSH Connection Support     | Medium   | ⬜      |
 | 8   | Azure App Service          | Medium   | ⬜      |
 | 9   | Slack/Teams Notifications  | Medium   | ✅ Done |
@@ -110,6 +110,7 @@
 | 13  | Remote Debugging           | Low      | ⬜      |
 | 14  | Incremental Deploy         | Low      | ⬜      |
 | 15  | Custom Environments        | Low      | ⬜      |
+| 16  | Chose Git Branch to Deploy | Low      | ⬜      |
 
 ---
 

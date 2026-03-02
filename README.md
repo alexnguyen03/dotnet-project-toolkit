@@ -103,59 +103,18 @@ Click any profile to open the **Profile Info Panel**.
 - Modify URL, credentials, or settings.
 - Enable **Open in browser** or **Stdout logging**.
 
-### 3. Deployment
+**Export Profile:**
+Right-click a profile -> **Export Publish Profile**.
 
-**Deploy to Staging/Dev:**
-Click the **Deploy** icon next to the profile.
+- Saves as `.pubxml` file to your chosen location.
+- Can be shared with other developers or projects.
 
-**Deploy to Production:**
-Click **Deploy**. A confirmation dialog is required for safety.
+**Import Profile:**
+Right-click a project -> **Import Publish Profile**.
 
-**Process:**
-Build -> Publish -> Deploy (MSDeploy) -> Verify -> Launch Browser.
-
-### 4. View Logs
-
-View IIS stdout logs directly within VS Code:
-
-1. Open a publish profile to view the **Profile Info Panel**.
-2. Scroll to **Deployment Options**.
-3. Ensure **Log Path** is set (e.g., `C:\inetpub\logs\LogFiles\W3SVC1`).
-4. Click the **View Logs** button.
-5. Logs are downloaded and displayed in the Output panel.
-
-### 5. Watch Management
-
-- **Start**: Click Play on a project or group.
-- **Groups**: Click `+` to create a group of projects to watch simultaneously.
-
-### 6. Debug Management
-
-- **Debug**: Click Debug icon on a project or group to attach debugger.
-- **Groups**: Create groups to debug microservices together.
-
-### 7. Deployment History
-
-View past deployments in the **History** view.
-
-- Shows status (Success/Failure) and duration.
-
-### 8. Deployment Rollback
-
-Rollback to a previous deployment version:
-
-1. Open the **History** view in the .NET Toolkit sidebar
-2. Right-click on a successful deployment
-3. Select **Rollback** from the context menu
-4. Confirm the rollback action
-
-**How it works:**
-
-- Before each deployment, the extension creates a backup of the published files
-- When rolling back, it restores the files from the backup and redeploys
-- Backups are stored in the system's temp folder
-
-**Note:** Rollback is only available for successful deployments that have a backup.
+- Select a `.pubxml` file from your computer.
+- Choose target project and profile name.
+- Profile is copied to the project's PublishProfiles folder.
 
 ---
 

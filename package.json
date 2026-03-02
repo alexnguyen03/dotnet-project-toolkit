@@ -98,6 +98,16 @@
 				"icon": "$(info)"
 			},
 			{
+				"command": "dotnet-project-toolkit.exportPublishProfile",
+				"title": ".NET Project Toolkit: Export Publish Profile",
+				"icon": "$(export)"
+			},
+			{
+				"command": "dotnet-project-toolkit.importPublishProfile",
+				"title": ".NET Project Toolkit: Import Publish Profile",
+				"icon": "$(import)"
+			},
+			{
 				"command": "dotnet-project-toolkit.deployProfile",
 				"title": ".NET Project Toolkit: Deploy Profile",
 				"icon": "$(rocket)"
