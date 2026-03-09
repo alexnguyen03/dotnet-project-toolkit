@@ -270,6 +270,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
+	// Test Connection button
+	const testConnBtn = document.getElementById('btnTestConnection');
+	if (testConnBtn) {
+		testConnBtn.addEventListener('click', () => {
+			vscode.postMessage({ command: 'testConnection' });
+		});
+	}
+
 	// View Logs
 	const viewLogsBtn = document.getElementById('btnViewLogs');
 	if (viewLogsBtn) {
@@ -460,3 +468,20 @@ function setPlaceholders(placeholders) {
 		if (el && placeholders[id]) el.placeholder = placeholders[id];
 	});
 }
+
+// ═══════════════════════════════════════
+// Handle messages from VS Code
+// ═══════════════════════════════════════
+window.addEventListener('message', (event) => {
+	const message = event.data;
+
+	switch (message.command) {
+		case 'showNotification':
+			if (message.type === 'success') {
+				vscode.window.showInformationMessage('✅ ' + message.message);
+			} else if (message.type === 'error') {
+				vscode.window.showErrorMessage('❌ ' + message.message);
+			}
+			break;
+	}
+});

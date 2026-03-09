@@ -187,6 +187,8 @@ export class DeploymentService implements IDeploymentService {
 
 		const args = [
 			'$env:DOTNET_PUBLISH_PASSWORD="' + password + '"; ',
+			'$env:DOTNET_SYSTEM_NET_HTTP_USESOCKETSHANDLER=0; ',
+			'[Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }; ',
 			'dotnet',
 			'publish',
 			`"${projectPath}"`,

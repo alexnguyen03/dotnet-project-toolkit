@@ -96,6 +96,9 @@ export class ProfileInfoPanel {
 						await this.sendUpdateData({ isDeploying: false });
 						await this.sendHistoryUpdate();
 						break;
+					case 'testConnection':
+						await this.handleTestConnection();
+						break;
 					case 'delete':
 						await vscode.commands.executeCommand(
 							'dotnet-project-toolkit.deletePublishProfile',
@@ -512,44 +515,52 @@ export class ProfileInfoPanel {
 		return latest?.status === 'in-progress';
 	}
 
-	private async handleTestConnection(data: any): Promise<void> {
-		this.outputChannel.appendLine(`[ProfileInfo] Testing connection for ${data.profileName}`);
+	private async handleTestConnection(data?: any): Promise<void> {
+		// If data is provided (from another source), use it; otherwise use current profile
+		const profileToTest = data?.profileInfo
+			? {
+					publishUrl: data.profileInfo.publishUrl,
+					publishMethod: data.profileInfo.publishMethod,
+					name: data.profileName,
+					path: data.profileInfo.path || '',
+					fileName: data.profileName || '',
+					environment: data.profileInfo.environment || 'unknown',
+					isProduction: data.profileInfo.isProduction || false,
+				}
+			: this.currentProfileInfo;
 
-		// Create a temporary profile object from form data
-		const tempProfile: PublishProfileInfo = {
-			name: data.profileName,
-			path: this.currentProfileInfo.path,
-			fileName: data.profileName,
-			environment: data.environment as DeployEnvironment,
-			isProduction: data.environment === DeployEnvironment.Production,
-			publishUrl: data.publishUrl,
-			siteName: data.siteName,
-			siteUrl: data.siteUrl,
-			userName: data.username,
-			openBrowserOnDeploy: data.openBrowserOnDeploy,
-			enableStdoutLog: data.enableStdoutLog,
-			logPath: data.logPath,
-			// Infer method from current profile or guess. Usually it's in the profile file.
-			// The form doesn't actually allow changing the method (MSDeploy vs FileSystem).
-			// We should use the method from the saved profile, as the UI doesn't expose it.
-			publishMethod: this.currentProfileInfo.publishMethod
-		};
-
-		// If the user changed the URL, we might want to guess the method if it's not set
-		// But simpler to rely on existing method. 
+		const profileName = data?.profileName || this.currentProfileInfo.name;
 
 		await vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
-				title: `Testing connection to ${data.profileName}...`,
+				title: `Testing connection to ${profileName}...`,
 				cancellable: false,
 			},
 			async () => {
-				const result = await ConnectionTester.testConnection(tempProfile, this.outputChannel);
+				const result = await ConnectionTester.testConnection(
+					profileToTest,
+					this.outputChannel
+				);
+
 				if (result.success) {
-					vscode.window.showInformationMessage(`✅ Connection successful: ${result.message}`);
+					vscode.window.showInformationMessage(
+						`✅ Connection successful: ${result.message}`
+					);
+					// Also send to webview
+					await this.panel.webview.postMessage({
+						command: 'showNotification',
+						type: 'success',
+						message: result.message,
+					});
 				} else {
 					vscode.window.showErrorMessage(`❌ Connection failed: ${result.message}`);
+					// Also send to webview
+					await this.panel.webview.postMessage({
+						command: 'showNotification',
+						type: 'error',
+						message: result.message,
+					});
 				}
 			}
 		);
@@ -563,11 +574,11 @@ export class ProfileInfoPanel {
 		let newName = this.currentProfileInfo.fileName;
 
 		const envKeywords: Record<string, string> = {
-			'dev': 'Dev',
-			'staging': 'Staging',
-			'uat': 'UAT',
-			'production': 'Prod',
-			'prod': 'Prod'
+			dev: 'Dev',
+			staging: 'Staging',
+			uat: 'UAT',
+			production: 'Prod',
+			prod: 'Prod',
 		};
 
 		// Try to replace environment keyword in the name
@@ -621,7 +632,9 @@ export class ProfileInfoPanel {
 			};
 		}
 
-		this.outputChannel.appendLine(`[ProfileInfo] Cloning profile "${this.currentProfileInfo.fileName}" to "${newName}" (${targetEnv})`);
+		this.outputChannel.appendLine(
+			`[ProfileInfo] Cloning profile "${this.currentProfileInfo.fileName}" to "${newName}" (${targetEnv})`
+		);
 
 		// 3. Open Create Wizard
 		ProfileInfoPanel.showForCreate(
@@ -650,7 +663,7 @@ export class ProfileInfoPanel {
 					userName: this.currentProfileInfo.userName,
 					openBrowserOnDeploy: this.currentProfileInfo.openBrowserOnDeploy,
 					enableStdoutLog: this.currentProfileInfo.enableStdoutLog,
-					logPath: this.currentProfileInfo.logPath
+					logPath: this.currentProfileInfo.logPath,
 				};
 
 				// Handle Site Name replacement
@@ -662,7 +675,10 @@ export class ProfileInfoPanel {
 					if (envRegex.test(newSiteName)) {
 						newSiteName = newSiteName.replace(envRegex, targetKeyword.toUpperCase()); // Site names often uppercase
 					} else if (keywordRegex.test(newSiteName)) {
-						newSiteName = newSiteName.replace(keywordRegex, targetKeyword.toUpperCase());
+						newSiteName = newSiteName.replace(
+							keywordRegex,
+							targetKeyword.toUpperCase()
+						);
 					}
 					newPanel.currentProfileInfo.siteName = newSiteName;
 				}
@@ -673,11 +689,17 @@ export class ProfileInfoPanel {
 					let newSiteUrl = this.currentProfileInfo.siteUrl;
 					// Try simple replacement
 					if (newSiteUrl.toLowerCase().includes(currentEnv.toLowerCase())) {
-						newSiteUrl = newSiteUrl.replace(new RegExp(currentEnv, 'i'), targetEnv.toLowerCase());
+						newSiteUrl = newSiteUrl.replace(
+							new RegExp(currentEnv, 'i'),
+							targetEnv.toLowerCase()
+						);
 					}
 					// If contains keyword
 					if (newSiteUrl.toLowerCase().includes(currentKeyword.toLowerCase())) {
-						newSiteUrl = newSiteUrl.replace(new RegExp(currentKeyword, 'i'), targetKeyword.toLowerCase());
+						newSiteUrl = newSiteUrl.replace(
+							new RegExp(currentKeyword, 'i'),
+							targetKeyword.toLowerCase()
+						);
 					}
 					newPanel.currentProfileInfo.siteUrl = newSiteUrl;
 				}
