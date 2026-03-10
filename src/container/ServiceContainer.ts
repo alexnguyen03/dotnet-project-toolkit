@@ -10,7 +10,6 @@ import { CreateProfileCommand } from '../commands/CreateProfileCommand';
 import { DeleteProfileCommand } from '../commands/DeleteProfileCommand';
 import { EditProfileCommand } from '../commands/EditProfileCommand';
 import { ProfileInfoCommand } from '../commands/ProfileInfoCommand';
-import { TestConnectionCommand } from '../commands/TestConnectionCommand';
 import { TestNotificationCommand } from '../commands/TestNotificationCommand';
 import { ProfileExportCommand } from '../commands/ProfileExportCommand';
 import { ProfileImportCommand } from '../commands/ProfileImportCommand';
@@ -217,7 +216,6 @@ export class ServiceContainer {
 				container.historyManager,
 				onRefresh
 			),
-			new TestConnectionCommand(container.outputChannel),
 			new TestNotificationCommand(container.outputChannel),
 		]);
 

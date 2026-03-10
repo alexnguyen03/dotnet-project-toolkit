@@ -23,6 +23,7 @@ export interface ProfileWizardData {
 	openBrowserOnDeploy?: boolean;
 	enableStdoutLog?: boolean;
 	logPath?: string;
+	linkedBranch?: string;
 }
 
 /**
@@ -192,6 +193,7 @@ export class ProfileService implements IProfileService {
 				openBrowserOnDeploy,
 				enableStdoutLog,
 				logPath: props?.LogPath,
+				linkedBranch: props?.LinkedBranch,
 			};
 		} catch (error) {
 			this.log(`Error parsing ${pubxmlPath}: ${error}`);

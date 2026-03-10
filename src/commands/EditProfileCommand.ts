@@ -142,6 +142,12 @@ export class EditProfileCommand extends BaseCommand {
 			password: true,
 		});
 
+		// Step 8: Linked Git Branch
+		const linkedBranch = await vscode.window.showInputBox({
+			prompt: 'Linked Git Branch (optional)',
+			value: existing.linkedBranch || '',
+		});
+
 		// If no password entered, we need to handle this differently
 		// For now, require password
 		if (!password) {
@@ -160,6 +166,7 @@ export class EditProfileCommand extends BaseCommand {
 			username,
 			password: password || 'KEEP_EXISTING', // Marker for keeping existing
 			siteUrl: siteUrl || undefined,
+			linkedBranch: linkedBranch || undefined,
 		};
 	}
 }

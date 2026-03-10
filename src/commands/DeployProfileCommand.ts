@@ -7,6 +7,7 @@ import { HistoryManager } from '../services/HistoryManager';
 import { PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IDeploymentService } from '../services/DeploymentService';
 import { NotificationService } from '../services/NotificationService';
+import { GitService } from '../services/GitService';
 
 /**
  * Deploy Profile Command
@@ -70,6 +71,45 @@ export class DeployProfileCommand implements ICommand {
 		}
 
 		this.outputChannel.appendLine(`[Deploy] Final project path: ${projectPath || 'NOT FOUND'}`);
+
+		// Git Branch Validation
+		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+		const gitService = new GitService(this.outputChannel, workspaceRoot);
+
+		if (profile.linkedBranch) {
+			const currentBranch = await gitService.getCurrentBranch();
+			if (currentBranch && currentBranch !== profile.linkedBranch) {
+				const message = `⚠️ Profile "${profile.name}" is linked to branch "${profile.linkedBranch}", but you are currently on branch "${currentBranch}".`;
+				const action = await vscode.window.showWarningMessage(
+					message,
+					{ modal: true },
+					`Switch to ${profile.linkedBranch} & Deploy`,
+					'Continue (Bypass)',
+					'Cancel'
+				);
+
+				if (action === `Switch to ${profile.linkedBranch} & Deploy`) {
+					if (await gitService.isDirty()) {
+						vscode.window.showErrorMessage(
+							'Cannot switch branch: working directory is dirty. Please commit or stash changes.'
+						);
+						return;
+					}
+					const success = await gitService.checkout(profile.linkedBranch);
+					if (!success) {
+						vscode.window.showErrorMessage(
+							`Failed to switch to branch ${profile.linkedBranch}`
+						);
+						return;
+					}
+					this.outputChannel.appendLine(
+						`[Git] Switched to branch ${profile.linkedBranch}`
+					);
+				} else if (action !== 'Continue (Bypass)') {
+					return;
+				}
+			}
+		}
 
 		// 1. Confirm deployment (for ALL environments)
 		const isProd = profile.environment === DeployEnvironment.Production;

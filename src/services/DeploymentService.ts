@@ -195,6 +195,7 @@ export class DeploymentService implements IDeploymentService {
 			`/p:PublishProfile="${profileName}"`,
 			'/p:Password=$env:DOTNET_PUBLISH_PASSWORD',
 			'/p:Configuration=Release',
+			'/p:AllowUntrustedCertificate=true',
 		];
 
 		return args.join(' ');
@@ -230,13 +231,13 @@ export class DeploymentService implements IDeploymentService {
 			process.stdout?.on('data', (data: Buffer) => {
 				const text = data.toString();
 				output += text;
-				this.outputChannel.append(text);
+				this.outputChannel.append(this.redactCredentials(text));
 			});
 
 			process.stderr?.on('data', (data: Buffer) => {
 				const text = data.toString();
 				output += text;
-				this.outputChannel.append(text);
+				this.outputChannel.append(this.redactCredentials(text));
 			});
 
 			process.on('close', (code: number) => {
@@ -257,7 +258,7 @@ export class DeploymentService implements IDeploymentService {
 			process.on('error', (error: Error) => {
 				clearTimeout(timeoutId);
 				output += `\nProcess error: ${error.message}`;
-				this.outputChannel.appendLine(`Process error: ${error.message}`);
+				this.outputChannel.appendLine(this.redactCredentials(`Process error: ${error.message}`));
 				resolve({
 					exitCode: 1,
 					output,
@@ -290,7 +291,21 @@ export class DeploymentService implements IDeploymentService {
 		return lines.slice(-5).join('\n') || 'Deployment failed. Check output for details.';
 	}
 
+	/**
+	 * Redact userName and password from MSDeploy / MSBuild log output
+	 * before writing to the output channel.
+	 */
+	private redactCredentials(text: string): string {
+		return text
+			.replace(/userName\s*[=:]\s*"[^"]*"/gi, 'userName="***"')
+			.replace(/password\s*[=:]\s*"[^"]*"/gi, 'password="***"')
+			.replace(/userName\s*[=:]\s*'[^']*'/gi, "userName='***'")
+			.replace(/password\s*[=:]\s*'[^']*'/gi, "password='***'")
+			.replace(/userName\s*[=:]\s*([^'",\s}]+)/gi, 'userName=***')
+			.replace(/password\s*[=:]\s*([^'",\s}]+)/gi, 'password=***');
+	}
+
 	private log(message: string): void {
-		this.outputChannel.appendLine(`[DeploymentService] ${message}`);
+		this.outputChannel.appendLine(`[DeploymentService] ${this.redactCredentials(message)}`);
 	}
 }

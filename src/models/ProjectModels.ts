@@ -48,6 +48,9 @@ export interface PublishProfileInfo {
 
 	/** Custom path to IIS stdout logs (e.g., D:\www\site\logs\stdout) */
 	logPath?: string;
+
+	/** Git branch linked to this profile */
+	linkedBranch?: string;
 }
 
 export interface ProjectInfo {

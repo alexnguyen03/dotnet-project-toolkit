@@ -6,7 +6,6 @@ import { IProfileService, ProfileWizardData } from '../services/ProfileService';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
 import { HistoryManager } from '../services/HistoryManager';
 import { DeploymentRecordHelper } from '../models/DeploymentRecord';
-import { ConnectionTester } from '../utils/ConnectionTester';
 
 /**
  * Profile Info Webview Panel
@@ -96,9 +95,6 @@ export class ProfileInfoPanel {
 						await this.sendUpdateData({ isDeploying: false });
 						await this.sendHistoryUpdate();
 						break;
-					case 'testConnection':
-						await this.handleTestConnection();
-						break;
 					case 'delete':
 						await vscode.commands.executeCommand(
 							'dotnet-project-toolkit.deletePublishProfile',
@@ -120,9 +116,6 @@ export class ProfileInfoPanel {
 						break;
 					case 'ready':
 						await this.sendUpdateData();
-						break;
-					case 'testConnection':
-						await this.handleTestConnection(message.data);
 						break;
 					case 'clone':
 						await this.handleCloneProfile(message.data);
@@ -332,6 +325,7 @@ export class ProfileInfoPanel {
 					openBrowserOnDeploy: data.openBrowserOnDeploy,
 					enableStdoutLog: data.enableStdoutLog,
 					logPath: data.logPath,
+					linkedBranch: data.linkedBranch,
 				};
 
 				this.panel.title = `${this.currentProjectName} / ${this.currentProfileInfo.fileName}`;
@@ -373,10 +367,12 @@ export class ProfileInfoPanel {
 			siteName: profile.siteName,
 			siteUrl: profile.siteUrl,
 			username: profile.userName,
+			linkedBranch: profile.linkedBranch,
 			openBrowserOnDeploy: profile.openBrowserOnDeploy,
 			enableStdoutLog: profile.enableStdoutLog,
 			logPath: profile.logPath,
 			passwordKey: passwordKey,
+
 			isDeploying: this._isDeploying || this.isDeploying(profile.fileName),
 			isCreateMode: this.isCreateMode,
 		};
@@ -515,56 +511,6 @@ export class ProfileInfoPanel {
 		return latest?.status === 'in-progress';
 	}
 
-	private async handleTestConnection(data?: any): Promise<void> {
-		// If data is provided (from another source), use it; otherwise use current profile
-		const profileToTest = data?.profileInfo
-			? {
-					publishUrl: data.profileInfo.publishUrl,
-					publishMethod: data.profileInfo.publishMethod,
-					name: data.profileName,
-					path: data.profileInfo.path || '',
-					fileName: data.profileName || '',
-					environment: data.profileInfo.environment || 'unknown',
-					isProduction: data.profileInfo.isProduction || false,
-				}
-			: this.currentProfileInfo;
-
-		const profileName = data?.profileName || this.currentProfileInfo.name;
-
-		await vscode.window.withProgress(
-			{
-				location: vscode.ProgressLocation.Notification,
-				title: `Testing connection to ${profileName}...`,
-				cancellable: false,
-			},
-			async () => {
-				const result = await ConnectionTester.testConnection(
-					profileToTest,
-					this.outputChannel
-				);
-
-				if (result.success) {
-					vscode.window.showInformationMessage(
-						`✅ Connection successful: ${result.message}`
-					);
-					// Also send to webview
-					await this.panel.webview.postMessage({
-						command: 'showNotification',
-						type: 'success',
-						message: result.message,
-					});
-				} else {
-					vscode.window.showErrorMessage(`❌ Connection failed: ${result.message}`);
-					// Also send to webview
-					await this.panel.webview.postMessage({
-						command: 'showNotification',
-						type: 'error',
-						message: result.message,
-					});
-				}
-			}
-		);
-	}
 
 	private async handleCloneProfile(data: any): Promise<void> {
 		const targetEnv = data.targetEnvironment as DeployEnvironment;

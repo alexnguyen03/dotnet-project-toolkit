@@ -4,7 +4,15 @@ const vscode = acquireVsCodeApi();
 // Dirty State Tracking
 // ═══════════════════════════════════════
 
-const TRACKED_FIELDS = ['environment', 'publishUrl', 'siteName', 'siteUrl', 'username', 'logPath'];
+const TRACKED_FIELDS = [
+	'environment',
+	'publishUrl',
+	'linkedBranch',
+	'siteName',
+	'siteUrl',
+	'username',
+	'logPath',
+];
 const TRACKED_CHECKBOXES = ['openBrowserOnDeploy', 'enableStdoutLog'];
 
 /** Snapshot of original values (set when data arrives from extension) */
@@ -109,6 +117,9 @@ function init(data) {
 	const pubUrlInput = document.getElementById('publishUrl');
 	if (pubUrlInput) pubUrlInput.value = data.publishUrl || '';
 
+	const branchInput = document.getElementById('linkedBranch');
+	if (branchInput) branchInput.value = data.linkedBranch || '';
+
 	const siteNameInput = document.getElementById('siteName');
 	if (siteNameInput) siteNameInput.value = data.siteName || '';
 
@@ -151,6 +162,7 @@ function init(data) {
 
 		setPlaceholders({
 			publishUrl: 'e.g. 192.168.10.5 or my-server.com',
+			linkedBranch: 'e.g. main, develop',
 			siteName: 'e.g. MyWebSite_Staging',
 			siteUrl: 'e.g. https://staging.myapp.com',
 			username: 'e.g. deploy_user',
@@ -174,6 +186,7 @@ function init(data) {
 
 		setPlaceholders({
 			publishUrl: '192.168.10.3',
+			linkedBranch: 'e.g. main',
 			siteName: 'MY_APP_API_STAGING',
 			siteUrl: 'https://example.com',
 			username: 'namnh',
@@ -267,14 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	if (deployBtn) {
 		deployBtn.addEventListener('click', () => {
 			vscode.postMessage({ command: 'deploy' });
-		});
-	}
-
-	// Test Connection button
-	const testConnBtn = document.getElementById('btnTestConnection');
-	if (testConnBtn) {
-		testConnBtn.addEventListener('click', () => {
-			vscode.postMessage({ command: 'testConnection' });
 		});
 	}
 
@@ -390,6 +395,7 @@ if (form) {
 			profileName: window.currentData.profileFileName,
 			environment: document.getElementById('environment').value,
 			publishUrl,
+			linkedBranch: document.getElementById('linkedBranch').value.trim() || undefined,
 			siteName,
 			siteUrl: document.getElementById('siteUrl').value || undefined,
 			username,
@@ -407,27 +413,12 @@ if (form) {
 // Helpers
 // ═══════════════════════════════════════
 
-function getFormData() {
-	if (!window.currentData) return {};
-	return {
-		profileName: window.currentData.profileFileName,
-		environment: document.getElementById('environment').value,
-		publishUrl: document.getElementById('publishUrl').value.trim(),
-		siteName: document.getElementById('siteName').value.trim(),
-		siteUrl: document.getElementById('siteUrl').value || undefined,
-		username: document.getElementById('username').value.trim(),
-		password: document.getElementById('password').value || 'KEEP_EXISTING',
-		openBrowserOnDeploy: document.getElementById('openBrowserOnDeploy').checked,
-		enableStdoutLog: document.getElementById('enableStdoutLog').checked,
-		logPath: document.getElementById('logPath').value.trim() || undefined,
-	};
-}
-
 window.resetForm = function () {
 	if (!window.currentData) return;
 	const data = window.currentData;
 	document.getElementById('environment').value = data.environment;
 	document.getElementById('publishUrl').value = data.publishUrl || '';
+	document.getElementById('linkedBranch').value = data.linkedBranch || '';
 	document.getElementById('siteName').value = data.siteName || '';
 	document.getElementById('siteUrl').value = data.siteUrl || '';
 	document.getElementById('username').value = data.username || '';
@@ -462,7 +453,7 @@ function showErrors(errors) {
 }
 
 function setPlaceholders(placeholders) {
-	const ids = ['publishUrl', 'siteName', 'siteUrl', 'username', 'password'];
+	const ids = ['publishUrl', 'linkedBranch', 'siteName', 'siteUrl', 'username', 'password'];
 	ids.forEach((id) => {
 		const el = document.getElementById(id);
 		if (el && placeholders[id]) el.placeholder = placeholders[id];

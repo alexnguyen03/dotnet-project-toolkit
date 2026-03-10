@@ -31,6 +31,7 @@ export class ProfileXmlGenerator implements IProfileXmlGenerator {
     <LaunchSiteAfterPublish>${data.openBrowserOnDeploy !== false}</LaunchSiteAfterPublish>
     <EnableStdoutLog>${data.enableStdoutLog === true}</EnableStdoutLog>
     <LogPath>${data.logPath || ''}</LogPath>
+    <LinkedBranch>${data.linkedBranch || ''}</LinkedBranch>
     <LastUsedBuildConfiguration>Release</LastUsedBuildConfiguration>
     <LastUsedPlatform>Any CPU</LastUsedPlatform>
     <SiteUrlToLaunchAfterPublish>${siteUrl}</SiteUrlToLaunchAfterPublish>

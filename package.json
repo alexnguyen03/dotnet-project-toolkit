@@ -188,11 +188,6 @@
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "dotnet-project-toolkit.testConnection",
-				"title": ".NET Project Toolkit: Test Connection",
-				"icon": "$(broadcast)"
-			},
-			{
 				"command": "dotnet-project-toolkit.testNotification",
 				"title": ".NET Project Toolkit: Test Notification",
 				"icon": "$(broadcast)"
@@ -286,11 +281,6 @@
 					"group": "inline@2"
 				},
 				{
-					"command": "dotnet-project-toolkit.testConnection",
-					"when": "view == dotnetToolkitExplorer && viewItem == publishProfile",
-					"group": "inline@3"
-				},
-				{
 					"command": "dotnet-project-toolkit.createPublishProfile",
 					"when": "view == dotnetPublish && viewItem == project",
 					"group": "inline"
@@ -304,11 +294,6 @@
 					"command": "dotnet-project-toolkit.deletePublishProfile",
 					"when": "view == dotnetPublish && viewItem == publishProfile",
 					"group": "inline@2"
-				},
-				{
-					"command": "dotnet-project-toolkit.testConnection",
-					"when": "view == dotnetPublish && viewItem == publishProfile",
-					"group": "inline@3"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.start",
