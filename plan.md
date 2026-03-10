@@ -50,7 +50,7 @@
 - **Mô tả:** Hỗ trợ deploy lên Azure
 - **Complexity:** High
 
-### 9. Slack/Teams Notifications
+### 9. Slack Notifications
 
 - **Mô tả:** Gửi notification sau khi deploy
 - **Complexity:** Low
@@ -103,7 +103,7 @@
 | 6   | Profile Import/Export      | Medium   | ✅ Done |
 | 7   | SSH Connection Support     | Medium   | ⬜      |
 | 8   | Azure App Service          | Medium   | ⬜      |
-| 9   | Slack/Teams Notifications  | Medium   | ✅ Done |
+| 9   | Slack Notifications        | Medium   | ✅ Done |
 | 10  | Deployment Scheduling      | Medium   | ⬜      |
 | 11  | Log Search                 | Low      | ⬜      |
 | 12  | Deployment Statistics      | Low      | ⬜      |
@@ -122,7 +122,7 @@
 - [x] Health Check sau Deploy
 - [ ] Profile Templates
 - [ ] Profile Import/Export
-- [x] Slack/Teams Notifications
+- [x] Slack Notifications
 
 ### v0.3.0
 

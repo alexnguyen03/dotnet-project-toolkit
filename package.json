@@ -507,21 +507,15 @@
 					"type": "string",
 					"enum": [
 						"none",
-						"slack",
-						"teams"
+						"slack"
 					],
 					"default": "none",
-					"description": "Notification platform to send deployment updates (none, slack, or teams)"
+					"description": "Notification platform to send deployment updates (none or slack)"
 				},
 				"dotnetToolkit.slackWebhookUrl": {
 					"type": "string",
 					"default": "",
 					"description": "Slack webhook URL for deployment notifications"
-				},
-				"dotnetToolkit.teamsWebhookUrl": {
-					"type": "string",
-					"default": "",
-					"description": "Microsoft Teams webhook URL for deployment notifications"
 				}
 			}
 		}

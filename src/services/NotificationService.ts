@@ -3,7 +3,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { DeploymentRecord, DeploymentRecordHelper } from '../models/DeploymentRecord';
 
-export type NotificationPlatform = 'slack' | 'teams' | 'none';
+export type NotificationPlatform = 'slack' | 'none';
 
 export interface NotificationResult {
 	success: boolean;
@@ -18,7 +18,7 @@ export interface INotificationService {
 }
 
 export class NotificationService implements INotificationService {
-	constructor(private readonly outputChannel: vscode.OutputChannel) {}
+	constructor(private readonly outputChannel: vscode.OutputChannel) { }
 
 	async sendDeploymentNotification(record: DeploymentRecord): Promise<NotificationResult> {
 		const config = vscode.workspace.getConfiguration('dotnetToolkit');
@@ -29,8 +29,7 @@ export class NotificationService implements INotificationService {
 			return { success: true };
 		}
 
-		const webhookUrl =
-			config.get<string>('slackWebhookUrl', '') || config.get<string>('teamsWebhookUrl', '');
+		const webhookUrl = config.get<string>('slackWebhookUrl', '');
 
 		if (!webhookUrl) {
 			this.outputChannel.appendLine(
@@ -42,8 +41,6 @@ export class NotificationService implements INotificationService {
 		try {
 			if (platform === 'slack') {
 				return await this.sendSlackNotification(record, webhookUrl);
-			} else if (platform === 'teams') {
-				return await this.sendTeamsNotification(record, webhookUrl);
 			}
 
 			return { success: false, error: 'Unknown platform' };
@@ -103,41 +100,6 @@ export class NotificationService implements INotificationService {
 							],
 						},
 					],
-				},
-			],
-		};
-
-		return this.sendWebhook(webhookUrl, JSON.stringify(payload));
-	}
-
-	private async sendTeamsNotification(
-		record: DeploymentRecord,
-		webhookUrl: string
-	): Promise<NotificationResult> {
-		const statusThemeColor = record.status === 'success' ? '36a64f' : 'ff0000';
-		const statusText = record.status === 'success' ? 'Succeeded' : 'Failed';
-
-		const payload = {
-			'@type': 'MessageCard',
-			'@context': 'http://schema.org/extensions',
-			themeColor: statusThemeColor,
-			summary: `Deployment ${statusText}`,
-			sections: [
-				{
-					activityTitle: `Deployment ${statusText}`,
-					activitySubtitle: `${record.projectName} - ${record.environment}`,
-					facts: [
-						{ name: 'Project', value: record.projectName },
-						{ name: 'Environment', value: record.environment },
-						{ name: 'Profile', value: record.profileName },
-						{
-							name: 'Duration',
-							value: record.duration
-								? DeploymentRecordHelper.formatDuration(record.duration)
-								: 'N/A',
-						},
-					],
-					markdown: true,
 				},
 			],
 		};

@@ -6,7 +6,7 @@ import { DeploymentRecord } from '../models/DeploymentRecord';
 export class TestNotificationCommand implements ICommand {
 	readonly id = 'dotnet-project-toolkit.testNotification';
 
-	constructor(private readonly outputChannel: vscode.OutputChannel) {}
+	constructor(private readonly outputChannel: vscode.OutputChannel) { }
 
 	async execute(): Promise<void> {
 		const config = vscode.workspace.getConfiguration('dotnetToolkit');
@@ -19,10 +19,7 @@ export class TestNotificationCommand implements ICommand {
 			return;
 		}
 
-		const webhookUrl =
-			platform === 'slack'
-				? config.get<string>('slackWebhookUrl', '')
-				: config.get<string>('teamsWebhookUrl', '');
+		const webhookUrl = config.get<string>('slackWebhookUrl', '');
 
 		if (!webhookUrl) {
 			vscode.window.showWarningMessage(
