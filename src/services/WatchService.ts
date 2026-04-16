@@ -139,7 +139,7 @@ export class WatchService {
 	public isGroupRunning(group: WatchGroup, allProjects: ProjectInfo[]): boolean {
 		// Return true only if ALL projects in the group are currently running
 		// This separates single-project runs from group runs conceptually
-		if (group.projects.length === 0) return false;
+		if (group.projects.length === 0) {return false;}
 
 		return group.projects.every((projectName) => {
 			const project = allProjects.find((p) => p.name === projectName);

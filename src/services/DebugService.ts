@@ -328,7 +328,7 @@ export class DebugService {
 	 * Check if all projects in a group are being debugged
 	 */
 	public isGroupDebugging(group: DebugGroup, allProjects: ProjectInfo[]): boolean {
-		if (group.projects.length === 0) return false;
+		if (group.projects.length === 0) {return false;}
 
 		return group.projects.every((projectName) => {
 			const project = allProjects.find((p) => p.name === projectName);

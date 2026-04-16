@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
 import * as path from 'path';
-import * as cp from 'child_process';
+import * as vscode from 'vscode';
 import { PublishProfileInfo } from '../models/ProjectModels';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
-import { IWebConfigModifier } from './WebConfigModifier';
+import { runProcess } from '../utils/ProcessRunner';
 import { HealthCheckService } from './HealthCheckService';
+import { IWebConfigModifier } from './WebConfigModifier';
 
 /**
  * Deployment result
@@ -56,7 +56,6 @@ export class DeploymentService implements IDeploymentService {
 		onProgress?: (message: string, increment: number) => void
 	): Promise<DeploymentResult> {
 		try {
-			// 1. Get password from storage
 			onProgress?.('Retrieving credentials...', 10);
 			const password = await this.getPassword(projectName, profileInfo.fileName);
 			if (!password) {
@@ -67,23 +66,23 @@ export class DeploymentService implements IDeploymentService {
 				};
 			}
 
-			// 2. Build dotnet publish command
 			onProgress?.(`Building ${projectName} (${profileInfo.fileName})...`, 30);
-			const command = this.buildPublishCommand(projectPath, profileInfo, password);
-			this.log(`Executing: dotnet publish with secure password handling`);
+			const publishConfig = this.buildPublishConfig(projectPath, profileInfo, password);
+			this.log('Executing: dotnet publish with secure password handling');
 
-			// 3. Execute deployment
 			onProgress?.(
 				`Publishing ${projectName} to ${profileInfo.environment.toUpperCase()} (${profileInfo.siteName})...`,
 				60
 			);
-			const result = await this.executeCommand(command, path.dirname(projectPath));
+			const result = await this.executeCommand(
+				publishConfig.args,
+				path.dirname(projectPath),
+				publishConfig.env
+			);
 
-			// 4. Check result
 			if (result.exitCode === 0) {
 				onProgress?.('Deployment complete!', 90);
 
-				// 5. Modify web.config if stdout logging is enabled
 				if (profileInfo.enableStdoutLog && this.webConfigModifier) {
 					try {
 						onProgress?.('Configuring stdout logging...', 95);
@@ -99,13 +98,10 @@ export class DeploymentService implements IDeploymentService {
 					}
 				}
 
-				// 6. Health check if siteUrl is available
 				let healthCheckResult: DeploymentResult['healthCheckResult'];
 				if (profileInfo.siteUrl) {
 					onProgress?.('Running health check...', 95);
-					this.outputChannel.appendLine(
-						`[HealthCheck] Checking ${profileInfo.siteUrl}...`
-					);
+					this.outputChannel.appendLine(`[HealthCheck] Checking ${profileInfo.siteUrl}...`);
 
 					const config = vscode.workspace.getConfiguration('dotnetToolkit');
 					const enableHealthCheck = config.get<boolean>('enableHealthCheck', true);
@@ -116,42 +112,38 @@ export class DeploymentService implements IDeploymentService {
 						healthCheckResult = await this.healthCheckService.checkWithRetry(
 							profileInfo.siteUrl,
 							retryCount,
-							2000
+							2000,
+							healthCheckTimeout
 						);
 
 						if (healthCheckResult.success) {
 							this.outputChannel.appendLine(
-								`[HealthCheck] ✓ Site is healthy (${healthCheckResult.statusCode}, ${healthCheckResult.responseTime}ms)`
+								`[HealthCheck] Site is healthy (${healthCheckResult.statusCode}, ${healthCheckResult.responseTime}ms)`
 							);
 						} else {
 							this.outputChannel.appendLine(
-								`[HealthCheck] ⚠️ Site may not be ready: ${healthCheckResult.error}`
+								`[HealthCheck] Site may not be ready: ${healthCheckResult.error}`
 							);
 						}
 					} else {
-						this.outputChannel.appendLine(
-							`[HealthCheck] Skipped (disabled in settings)`
-						);
+						this.outputChannel.appendLine('[HealthCheck] Skipped (disabled in settings)');
 						healthCheckResult = { success: false, error: 'Disabled' };
 					}
 				}
 
-				onProgress?.(
-					`✅ ${projectName} (${profileInfo.fileName}) deployed successfully!`,
-					100
-				);
+				onProgress?.(`${projectName} (${profileInfo.fileName}) deployed successfully!`, 100);
 				return {
 					success: true,
 					output: result.output,
 					healthCheckResult,
 				};
-			} else {
-				return {
-					success: false,
-					errorMessage: this.extractErrorMessage(result.output),
-					output: result.output,
-				};
 			}
+
+			return {
+				success: false,
+				errorMessage: this.extractErrorMessage(result.output),
+				output: result.output,
+			};
 		} catch (error: any) {
 			this.log(`Deployment error: ${error.message}`);
 			return {
@@ -162,116 +154,69 @@ export class DeploymentService implements IDeploymentService {
 		}
 	}
 
-	/**
-	 * Get password from storage
-	 */
-	private async getPassword(
-		projectName: string,
-		profileName: string
-	): Promise<string | undefined> {
+	private async getPassword(projectName: string, profileName: string): Promise<string | undefined> {
 		const key = this.passwordStorage.generateKey(projectName, profileName);
 		return await this.passwordStorage.retrieve(key);
 	}
 
-	/**
-	 * Build dotnet publish command with MSDeploy parameters
-	 * Password is passed via environment variable for security
-	 */
-	private buildPublishCommand(
+	private buildPublishConfig(
 		projectPath: string,
 		profileInfo: PublishProfileInfo,
 		password: string
-	): string {
-		const profileName = profileInfo.fileName;
+	): { args: string[]; env: NodeJS.ProcessEnv } {
 		const passwordEnvVar = 'DOTNET_PUBLISH_PASSWORD';
 
-		const args = [
-			'$env:DOTNET_PUBLISH_PASSWORD="' + password + '"; ',
-			'$env:DOTNET_SYSTEM_NET_HTTP_USESOCKETSHANDLER=0; ',
-			'[Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }; ',
-			'dotnet',
-			'publish',
-			`"${projectPath}"`,
-			`/p:PublishProfile="${profileName}"`,
-			'/p:Password=$env:DOTNET_PUBLISH_PASSWORD',
-			'/p:Configuration=Release',
-			'/p:AllowUntrustedCertificate=true',
-		];
-
-		return args.join(' ');
+		return {
+			args: [
+				'publish',
+				projectPath,
+				`/p:PublishProfile=${profileInfo.fileName}`,
+				'/p:Password=$(DOTNET_PUBLISH_PASSWORD)',
+				'/p:Configuration=Release',
+				'/p:AllowUntrustedCertificate=true',
+			],
+			env: {
+				...process.env,
+				[passwordEnvVar]: password,
+				DOTNET_SYSTEM_NET_HTTP_USESOCKETSHANDLER: '0',
+			},
+		};
 	}
 
-	/**
-	 * Execute command and capture output with timeout
-	 */
 	private async executeCommand(
-		command: string,
+		args: string[],
 		cwd: string,
+		env: NodeJS.ProcessEnv,
 		timeoutMs: number = 300000
 	): Promise<{ exitCode: number; output: string }> {
-		return new Promise((resolve) => {
-			let output = '';
-			let timedOut = false;
-
-			const process = cp.exec(command, {
-				cwd,
-				maxBuffer: 10 * 1024 * 1024,
-				shell: 'powershell.exe',
-			});
-
-			const timeoutId = setTimeout(() => {
-				timedOut = true;
-				process.kill('SIGTERM');
-				output += '\nCommand timed out after ' + timeoutMs / 1000 + ' seconds';
-				this.outputChannel.appendLine(
-					`[Timeout] Command timed out after ${timeoutMs / 1000}s`
-				);
-			}, timeoutMs);
-
-			process.stdout?.on('data', (data: Buffer) => {
-				const text = data.toString();
-				output += text;
+		const result = await runProcess('dotnet', args, {
+			cwd,
+			env,
+			timeoutMs,
+			maxOutputBytes: 10 * 1024 * 1024,
+			onStdout: (text) => {
 				this.outputChannel.append(this.redactCredentials(text));
-			});
-
-			process.stderr?.on('data', (data: Buffer) => {
-				const text = data.toString();
-				output += text;
+			},
+			onStderr: (text) => {
 				this.outputChannel.append(this.redactCredentials(text));
-			});
-
-			process.on('close', (code: number) => {
-				clearTimeout(timeoutId);
-				if (timedOut) {
-					resolve({
-						exitCode: 124,
-						output,
-					});
-				} else {
-					resolve({
-						exitCode: code || 0,
-						output,
-					});
-				}
-			});
-
-			process.on('error', (error: Error) => {
-				clearTimeout(timeoutId);
-				output += `\nProcess error: ${error.message}`;
-				this.outputChannel.appendLine(this.redactCredentials(`Process error: ${error.message}`));
-				resolve({
-					exitCode: 1,
-					output,
-				});
-			});
+			},
 		});
+
+		if (result.timedOut) {
+			this.outputChannel.appendLine(`[Timeout] Command timed out after ${timeoutMs / 1000}s`);
+		}
+
+		if (result.error) {
+			this.outputChannel.appendLine(this.redactCredentials(`Process error: ${result.error}`));
+		}
+
+		return {
+			exitCode: result.exitCode,
+			output: result.output,
+		};
 	}
 
-	/**
-	 * Extract meaningful error message from output
-	 */
 	private extractErrorMessage(output: string): string {
-		// Look for common error patterns
 		const errorPatterns = [
 			/error\s*:\s*(.+)/i,
 			/failed\s*:\s*(.+)/i,
@@ -286,15 +231,10 @@ export class DeploymentService implements IDeploymentService {
 			}
 		}
 
-		// If no specific error found, return last few lines
 		const lines = output.split('\n').filter((l) => l.trim());
 		return lines.slice(-5).join('\n') || 'Deployment failed. Check output for details.';
 	}
 
-	/**
-	 * Redact userName and password from MSDeploy / MSBuild log output
-	 * before writing to the output channel.
-	 */
 	private redactCredentials(text: string): string {
 		return text
 			.replace(/userName\s*[=:]\s*"[^"]*"/gi, 'userName="***"')

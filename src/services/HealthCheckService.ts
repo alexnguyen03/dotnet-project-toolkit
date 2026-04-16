@@ -101,10 +101,11 @@ export class HealthCheckService implements IHealthCheckService {
 	async checkWithRetry(
 		url: string,
 		retryCount: number = 3,
-		delayMs: number = 2000
+		delayMs: number = 2000,
+		timeoutMs: number = 10000
 	): Promise<HealthCheckResult> {
 		for (let i = 0; i < retryCount; i++) {
-			const result = await this.check(url);
+			const result = await this.check(url, timeoutMs);
 
 			if (result.success) {
 				return result;
@@ -118,6 +119,6 @@ export class HealthCheckService implements IHealthCheckService {
 			}
 		}
 
-		return await this.check(url);
+		return await this.check(url, timeoutMs);
 	}
 }

@@ -231,7 +231,7 @@ export class HistoryTreeItem extends vscode.TreeItem {
 	}
 
 	private createTooltip(): string {
-		if (!this.record) return '';
+		if (!this.record) {return '';}
 
 		const lines = [
 			`Profile: ${this.record.profileName}`,

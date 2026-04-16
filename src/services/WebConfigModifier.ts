@@ -1,20 +1,14 @@
-import * as vscode from 'vscode';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
-
-const execAsync = promisify(exec);
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { runProcess } from '../utils/ProcessRunner';
 
 /**
  * Web.config Modifier Service
  * Modifies web.config on remote IIS server after deployment
  */
 export interface IWebConfigModifier {
-	/**
-	 * Enable or disable stdout logging in web.config
-	 */
 	modifyStdoutLogging(
 		publishUrl: string,
 		siteName: string,
@@ -27,7 +21,6 @@ export interface IWebConfigModifier {
 /**
  * Web.config Modifier Implementation
  * Uses MSDeploy to pull web.config, modify it locally, and push it back.
- * This avoids PowerShell 'runCommand' privilege errors (HRESULT: 0x80070522).
  */
 export class WebConfigModifier implements IWebConfigModifier {
 	constructor(private readonly outputChannel: vscode.OutputChannel) {}
@@ -44,13 +37,11 @@ export class WebConfigModifier implements IWebConfigModifier {
 		try {
 			this.log(`Modifying web.config stdout logging: ${enable ? 'ENABLE' : 'DISABLE'}`);
 
-			// 1. Find msdeploy.exe
 			const msdeployPath = this.findMsDeployPath();
 			if (!msdeployPath) {
 				throw new Error('MSDeploy (msdeploy.exe) not found.');
 			}
 
-			// 2. Resolve destination publish URL properly format
 			let destComputerName = publishUrl;
 			if (!destComputerName.toLowerCase().startsWith('http')) {
 				destComputerName = `https://${destComputerName}:8172/msdeploy.axd?site=${siteName}`;
@@ -61,31 +52,37 @@ export class WebConfigModifier implements IWebConfigModifier {
 
 			const remoteContentPath = `${siteName}/web.config`;
 
-			// 3. Download web.config from remote server
 			this.log('Downloading remote web.config...');
-			const pullCommand =
-				`& "${msdeployPath}" -verb:sync ` +
-				`'-source:contentPath="${remoteContentPath}",computerName="${destComputerName}",userName="${userName}",password="${password}",authType="Basic"' ` +
-				`'-dest:contentPath="${tempFile}"' ` +
-				`-allowUntrusted`;
+			const pullResult = await runProcess(
+				msdeployPath,
+				[
+					'-verb:sync',
+					`-source:contentPath=${remoteContentPath},computerName=${destComputerName},userName=${userName},password=${password},authType=Basic`,
+					`-dest:contentPath=${tempFile}`,
+					'-allowUntrusted',
+				],
+				{
+					timeoutMs: 60000,
+					onStdout: (text) => this.log(text.trim()),
+					onStderr: (text) => this.log(text.trim()),
+				}
+			);
 
-			await execAsync(pullCommand, { shell: 'powershell.exe' });
+			if (pullResult.exitCode !== 0) {
+				throw new Error(`Failed to download web.config: ${pullResult.output}`);
+			}
 
 			if (!fs.existsSync(tempFile)) {
 				throw new Error('Downloaded web.config file not found in temp directory.');
 			}
 
-			// 4. Modify the file locally
 			this.log('Modifying web.config locally...');
 			let webConfigContent = fs.readFileSync(tempFile, 'utf8');
 
 			const stdoutEnabled = enable ? 'true' : 'false';
 			const stdoutLogFile = '.\\logs\\stdout';
 
-			// Find <aspNetCore ... > and replace attributes
 			if (webConfigContent.includes('<aspNetCore')) {
-				// We use regex to safely replace stdoutLogEnabled and stdoutLogFile attributes
-				// If they don't exist, we add them before the closing bracket of the aspNetCore tag
 				if (/stdoutLogEnabled="[^"]*"/.test(webConfigContent)) {
 					webConfigContent = webConfigContent.replace(
 						/stdoutLogEnabled="[^"]*"/g,
@@ -113,29 +110,40 @@ export class WebConfigModifier implements IWebConfigModifier {
 
 			fs.writeFileSync(tempFile, webConfigContent, 'utf8');
 
-			// 5. Upload web.config back to remote server
 			this.log('Uploading modified web.config to server...');
-			const pushCommand =
-				`& "${msdeployPath}" -verb:sync ` +
-				`'-source:contentPath="${tempFile}"' ` +
-				`'-dest:contentPath="${remoteContentPath}",computerName="${destComputerName}",userName="${userName}",password="${password}",authType="Basic"' ` +
-				`-allowUntrusted`;
+			const pushResult = await runProcess(
+				msdeployPath,
+				[
+					'-verb:sync',
+					`-source:contentPath=${tempFile}`,
+					`-dest:contentPath=${remoteContentPath},computerName=${destComputerName},userName=${userName},password=${password},authType=Basic`,
+					'-allowUntrusted',
+				],
+				{
+					timeoutMs: 60000,
+					onStdout: (text) => this.log(text.trim()),
+					onStderr: (text) => this.log(text.trim()),
+				}
+			);
 
-			await execAsync(pushCommand, { shell: 'powershell.exe' });
+			if (pushResult.exitCode !== 0) {
+				throw new Error(`Failed to upload web.config: ${pushResult.output}`);
+			}
 
-			this.log('✓ Web.config modified successfully');
+			this.log('Web.config modified successfully');
 		} catch (error: any) {
 			const firstLine = (error.message as string).split('\n')[0].trim();
 			this.log(`Error modifying web.config: ${firstLine}`);
 			vscode.window.showWarningMessage(
-				`Deployment succeeded, but failed to modify web.config stdout logging. Check output for details.`
+				'Deployment succeeded, but failed to modify web.config stdout logging. Check output for details.'
 			);
 		} finally {
-			// Cleanup
 			if (fs.existsSync(tempFile)) {
 				try {
 					fs.unlinkSync(tempFile);
-				} catch (e) {}
+				} catch {
+					// Ignore cleanup errors
+				}
 			}
 		}
 	}
@@ -156,7 +164,7 @@ export class WebConfigModifier implements IWebConfigModifier {
 		}
 
 		try {
-			const { stdout } = require('child_process').execSync('where msdeploy.exe', {
+			const stdout = require('child_process').execSync('where msdeploy.exe', {
 				encoding: 'utf-8',
 			});
 			const foundPath = stdout.trim().split('\n')[0];
@@ -173,6 +181,10 @@ export class WebConfigModifier implements IWebConfigModifier {
 	}
 
 	private log(message: string): void {
+		if (!message) {
+			return;
+		}
+
 		const redactedMessage = message
 			.replace(/userName\s*[=:]\s*"[^"]*"/gi, 'userName="***"')
 			.replace(/password\s*[=:]\s*"[^"]*"/gi, 'password="***"')

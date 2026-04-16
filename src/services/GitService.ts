@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import * as cp from 'child_process';
-import * as path from 'path';
+import { runProcess } from '../utils/ProcessRunner';
 
 export class GitService {
 	constructor(
@@ -10,7 +9,7 @@ export class GitService {
 
 	async getCurrentBranch(): Promise<string> {
 		try {
-			const output = await this.execute('git branch --show-current');
+			const output = await this.execute('git', ['branch', '--show-current']);
 			return output.trim();
 		} catch (error) {
 			this.log(`Error getting current branch: ${error}`);
@@ -20,7 +19,7 @@ export class GitService {
 
 	async isDirty(): Promise<boolean> {
 		try {
-			const output = await this.execute('git status --porcelain');
+			const output = await this.execute('git', ['status', '--porcelain']);
 			return output.trim().length > 0;
 		} catch (error) {
 			this.log(`Error checking git status: ${error}`);
@@ -30,7 +29,7 @@ export class GitService {
 
 	async checkout(branch: string): Promise<boolean> {
 		try {
-			await this.execute(`git checkout ${branch}`);
+			await this.execute('git', ['checkout', branch]);
 			return true;
 		} catch (error) {
 			this.log(`Error checking out branch ${branch}: ${error}`);
@@ -38,16 +37,18 @@ export class GitService {
 		}
 	}
 
-	private async execute(command: string): Promise<string> {
-		return new Promise((resolve, reject) => {
-			cp.exec(command, { cwd: this.workspaceRoot }, (error, stdout, stderr) => {
-				if (error) {
-					reject(error);
-				} else {
-					resolve(stdout);
-				}
-			});
+	private async execute(command: string, args: string[]): Promise<string> {
+		const result = await runProcess(command, args, {
+			cwd: this.workspaceRoot,
+			timeoutMs: 60000,
+			maxOutputBytes: 1024 * 1024,
 		});
+
+		if (result.exitCode !== 0) {
+			throw new Error(result.output || result.error || 'Command failed');
+		}
+
+		return result.output;
 	}
 
 	private log(message: string): void {

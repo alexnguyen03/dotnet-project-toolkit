@@ -378,7 +378,7 @@ export class ServiceContainer {
 						prompt: 'Enter Watch Group Name',
 						placeHolder: 'Frontend & Backend',
 					});
-					if (!name) return;
+					if (!name) {return;}
 
 					const structure = await container.projectScanner.scanWorkspace(
 						vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''
@@ -480,7 +480,7 @@ export class ServiceContainer {
 						prompt: 'Enter Debug Group Name',
 						placeHolder: 'Frontend & Backend',
 					});
-					if (!name) return;
+					if (!name) {return;}
 
 					const structure = await container.projectScanner.scanWorkspace(
 						vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''

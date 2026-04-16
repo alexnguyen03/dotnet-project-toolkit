@@ -54,7 +54,8 @@
 			},
 			{
 				"command": "dotnet-project-toolkit.createPublishProfile",
-				"title": ".NET Project Toolkit: Create Publish Profile"
+				"title": ".NET Project Toolkit: Create Publish Profile",
+				"icon": "$(add)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deletePublishProfile",

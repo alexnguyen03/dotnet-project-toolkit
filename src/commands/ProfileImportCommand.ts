@@ -52,9 +52,9 @@ export class ProfileImportCommand implements ICommand {
 				prompt: 'Enter profile name',
 				value: sourceFileName.replace('.pubxml', ''),
 				validateInput: (v: string) => {
-					if (!v?.trim()) return 'Profile name is required';
+					if (!v?.trim()) {return 'Profile name is required';}
 					if (!/^[a-zA-Z0-9-_]+$/.test(v))
-						return 'Only letters, numbers, hyphens, underscores';
+						{return 'Only letters, numbers, hyphens, underscores';}
 					return null;
 				},
 			});

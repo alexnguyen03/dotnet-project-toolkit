@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
-import * as cp from 'child_process';
+import * as path from 'path';
+import * as vscode from 'vscode';
 import { PublishProfileInfo } from '../models/ProjectModels';
 import { IPasswordStorage } from '../strategies/IPasswordStorage';
+import { runProcess } from '../utils/ProcessRunner';
 
 export interface RollbackResult {
 	success: boolean;
@@ -13,14 +13,7 @@ export interface RollbackResult {
 }
 
 export interface IRollbackService {
-	/**
-	 * Create a backup of current deployment before new deployment
-	 */
 	createBackup(projectPath: string, profileInfo: PublishProfileInfo): Promise<string | null>;
-
-	/**
-	 * Rollback to a previous backup
-	 */
 	rollback(
 		projectPath: string,
 		projectName: string,
@@ -62,10 +55,8 @@ export class RollbackService implements IRollbackService {
 			}
 
 			this.outputChannel.appendLine(`[Rollback] Creating backup at: ${backupDir}`);
-
 			await this.copyDirectory(publishDir, backupDir);
-
-			this.outputChannel.appendLine(`[Rollback] Backup created successfully`);
+			this.outputChannel.appendLine('[Rollback] Backup created successfully');
 			return backupDir;
 		} catch (error: any) {
 			this.outputChannel.appendLine(`[Rollback] Failed to create backup: ${error.message}`);
@@ -99,10 +90,9 @@ export class RollbackService implements IRollbackService {
 			}
 
 			await this.copyDirectory(backupPath, publishDir);
+			this.outputChannel.appendLine('[Rollback] Restored published files successfully');
 
-			this.outputChannel.appendLine(`[Rollback] Restored published files successfully`);
-
-			this.outputChannel.appendLine(`[Rollback] Deploying restored files to server...`);
+			this.outputChannel.appendLine('[Rollback] Deploying restored files to server...');
 			const deployResult = await this.deployBackup(projectPath, profileInfo, password);
 
 			return {
@@ -124,35 +114,39 @@ export class RollbackService implements IRollbackService {
 		profileInfo: PublishProfileInfo,
 		password: string
 	): Promise<{ exitCode: number; output: string }> {
-		return new Promise((resolve) => {
-			const profileName = profileInfo.fileName;
-			const command = `powershell.exe -Command "$env:DOTNET_PUBLISH_PASSWORD='${password}'; dotnet publish '${projectPath}' /p:PublishProfile='${profileName}' /p:Password=$env:DOTNET_PUBLISH_PASSWORD /p:Configuration=Release"`;
-
-			let output = '';
-			const process = cp.exec(command, {
+		const result = await runProcess(
+			'dotnet',
+			[
+				'publish',
+				projectPath,
+				`/p:PublishProfile=${profileInfo.fileName}`,
+				'/p:Password=$(DOTNET_PUBLISH_PASSWORD)',
+				'/p:Configuration=Release',
+			],
+			{
 				cwd: path.dirname(projectPath),
-				maxBuffer: 10 * 1024 * 1024,
-			});
+				env: {
+					...process.env,
+					DOTNET_PUBLISH_PASSWORD: password,
+				},
+				maxOutputBytes: 10 * 1024 * 1024,
+				onStdout: (text) => {
+					this.outputChannel.append(text);
+				},
+				onStderr: (text) => {
+					this.outputChannel.append(text);
+				},
+			}
+		);
 
-			process.stdout?.on('data', (data: Buffer) => {
-				output += data.toString();
-				this.outputChannel.append(data.toString());
-			});
+		if (result.timedOut) {
+			this.outputChannel.appendLine('[Rollback] Deployment timed out');
+		}
 
-			process.stderr?.on('data', (data: Buffer) => {
-				output += data.toString();
-				this.outputChannel.append(data.toString());
-			});
-
-			process.on('close', (code) => {
-				resolve({ exitCode: code || 0, output });
-			});
-
-			process.on('error', (error) => {
-				output += `\nError: ${error.message}`;
-				resolve({ exitCode: 1, output });
-			});
-		});
+		return {
+			exitCode: result.exitCode,
+			output: result.output,
+		};
 	}
 
 	private async copyDirectory(src: string, dest: string): Promise<void> {
@@ -161,7 +155,6 @@ export class RollbackService implements IRollbackService {
 		}
 
 		const entries = fs.readdirSync(src, { withFileTypes: true });
-
 		for (const entry of entries) {
 			const srcPath = path.join(src, entry.name);
 			const destPath = path.join(dest, entry.name);

@@ -6,7 +6,7 @@ import { PublishTreeItem } from '../ui/publish/PublishTreeProvider';
 import { ProfileService } from '../services/ProfileService';
 
 export class ProfileExportCommand implements ICommand {
-	readonly id = 'dotnetProjectToolkit.exportPublishProfile';
+	readonly id = 'dotnet-project-toolkit.exportPublishProfile';
 
 	constructor(
 		private readonly outputChannel: vscode.OutputChannel,

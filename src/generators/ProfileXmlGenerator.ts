@@ -22,6 +22,13 @@ export class ProfileXmlGenerator implements IProfileXmlGenerator {
 		const siteUrl = data.siteUrl || `https://${data.publishUrl}`;
 		const guid = GuidGenerator.generate();
 		const envName = this.mapEnvironmentName(data.environment);
+		const escapedLinkedBranch = this.escapeXml(data.linkedBranch || '');
+		const escapedLogPath = this.escapeXml(data.logPath || '');
+		const escapedSiteUrl = this.escapeXml(siteUrl);
+		const escapedPublishUrl = this.escapeXml(data.publishUrl);
+		const escapedSiteName = this.escapeXml(data.siteName);
+		const escapedUsername = this.escapeXml(data.username);
+		const escapedTargetFramework = this.escapeXml(targetFramework);
 
 		return `<?xml version="1.0" encoding="utf-8"?>
 <!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
@@ -30,26 +37,26 @@ export class ProfileXmlGenerator implements IProfileXmlGenerator {
     <WebPublishMethod>MSDeploy</WebPublishMethod>
     <LaunchSiteAfterPublish>${data.openBrowserOnDeploy !== false}</LaunchSiteAfterPublish>
     <EnableStdoutLog>${data.enableStdoutLog === true}</EnableStdoutLog>
-    <LogPath>${data.logPath || ''}</LogPath>
-    <LinkedBranch>${data.linkedBranch || ''}</LinkedBranch>
+    <LogPath>${escapedLogPath}</LogPath>
+    <LinkedBranch>${escapedLinkedBranch}</LinkedBranch>
     <LastUsedBuildConfiguration>Release</LastUsedBuildConfiguration>
     <LastUsedPlatform>Any CPU</LastUsedPlatform>
-    <SiteUrlToLaunchAfterPublish>${siteUrl}</SiteUrlToLaunchAfterPublish>
+    <SiteUrlToLaunchAfterPublish>${escapedSiteUrl}</SiteUrlToLaunchAfterPublish>
     <ExcludeApp_Data>false</ExcludeApp_Data>
     <ProjectGuid>${guid}</ProjectGuid>
     <SelfContained>false</SelfContained>
-    <MSDeployServiceURL>${data.publishUrl}</MSDeployServiceURL>
-    <DeployIisAppPath>${data.siteName}</DeployIisAppPath>
+    <MSDeployServiceURL>${escapedPublishUrl}</MSDeployServiceURL>
+    <DeployIisAppPath>${escapedSiteName}</DeployIisAppPath>
     <RemoteSitePhysicalPath />
     <SkipExtraFilesOnServer>true</SkipExtraFilesOnServer>
     <MSDeployPublishMethod>WMSVC</MSDeployPublishMethod>
     <EnableMSDeployBackup>true</EnableMSDeployBackup>
     <EnableMsDeployAppOffline>true</EnableMsDeployAppOffline>
-    <UserName>${data.username}</UserName>
+    <UserName>${escapedUsername}</UserName>
     <_SavePWD>true</_SavePWD>
     <_TargetId>IISWebDeploy</_TargetId>
     <EnvironmentName>${envName}</EnvironmentName>
-    <TargetFramework>${targetFramework}</TargetFramework>
+    <TargetFramework>${escapedTargetFramework}</TargetFramework>
   </PropertyGroup>
 </Project>
 `;
@@ -66,5 +73,14 @@ export class ProfileXmlGenerator implements IProfileXmlGenerator {
 			default:
 				return 'Development';
 		}
+	}
+
+	private escapeXml(value: string): string {
+		return value
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&apos;');
 	}
 }
