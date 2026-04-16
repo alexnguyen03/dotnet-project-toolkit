@@ -1,10 +1,7 @@
 const vscode = acquireVsCodeApi();
 
-// ═══════════════════════════════════════
-// Dirty State Tracking
-// ═══════════════════════════════════════
-
 const TRACKED_FIELDS = [
+	'profileName',
 	'environment',
 	'publishUrl',
 	'linkedBranch',
@@ -14,153 +11,224 @@ const TRACKED_FIELDS = [
 	'logPath',
 ];
 const TRACKED_CHECKBOXES = ['openBrowserOnDeploy', 'enableStdoutLog'];
+const ENV_NAMES = { staging: 'Staging', production: 'Production', dev: 'Dev' };
+const DEFAULT_DEPLOY_METHOD = 'iis';
 
-/** Snapshot of original values (set when data arrives from extension) */
 let originalSnapshot = null;
 let dirtyListenersAttached = false;
+let activeDeployMethod = DEFAULT_DEPLOY_METHOD;
+
+function byId(id) {
+	return document.getElementById(id);
+}
+
+function setText(id, value) {
+	const el = byId(id);
+	if (el) {
+		el.textContent = value;
+	}
+}
+
+function setValue(id, value) {
+	const el = byId(id);
+	if (el) {
+		el.value = value ?? '';
+	}
+}
+
+function setChecked(id, value) {
+	const el = byId(id);
+	if (el) {
+		el.checked = Boolean(value);
+	}
+}
+
+function setDisplay(id, visible) {
+	const el = byId(id);
+	if (el) {
+		el.style.display = visible ? '' : 'none';
+	}
+}
 
 function captureSnapshot() {
-	const s = {};
+	const snapshot = {};
+
 	TRACKED_FIELDS.forEach((id) => {
-		const el = document.getElementById(id);
-		if (el) s[id] = el.value;
+		const el = byId(id);
+		if (el) {
+			snapshot[id] = el.value;
+		}
 	});
+
 	TRACKED_CHECKBOXES.forEach((id) => {
-		const el = document.getElementById(id);
-		if (el) s[id] = el.checked;
+		const el = byId(id);
+		if (el) {
+			snapshot[id] = el.checked;
+		}
 	});
-	// Password is always considered "clean" unless the user types something
-	s.password = '';
-	return s;
+
+	snapshot.password = '';
+	return snapshot;
 }
 
 function isDirty() {
-	if (!originalSnapshot) return false;
+	if (!originalSnapshot) {
+		return false;
+	}
+
 	for (const id of TRACKED_FIELDS) {
-		const el = document.getElementById(id);
-		if (el && el.value !== originalSnapshot[id]) return true;
+		const el = byId(id);
+		if (el && el.value !== originalSnapshot[id]) {
+			return true;
+		}
 	}
+
 	for (const id of TRACKED_CHECKBOXES) {
-		const el = document.getElementById(id);
-		if (el && el.checked !== originalSnapshot[id]) return true;
+		const el = byId(id);
+		if (el && el.checked !== originalSnapshot[id]) {
+			return true;
+		}
 	}
-	// Any password input counts as dirty
-	const pwdEl = document.getElementById('password');
-	if (pwdEl && pwdEl.value.length > 0) return true;
+
+	const passwordInput = byId('password');
+	if (passwordInput && passwordInput.value.length > 0) {
+		return true;
+	}
+
 	return false;
 }
 
 function updateDirtyUI() {
+	if (!isIisMethodActive()) {
+		setDisplay('formDirtyActions', false);
+		setDisplay('deployBtnContainer', false);
+		return;
+	}
+
 	const dirty = isDirty() || (window.currentData && window.currentData.isCreateMode);
-	const dirtyActions = document.getElementById('formDirtyActions');
-	if (dirtyActions) dirtyActions.style.display = dirty ? 'flex' : 'none';
+	setDisplay('formDirtyActions', Boolean(dirty));
+
+	const isCreateMode = Boolean(window.currentData && window.currentData.isCreateMode);
+	setDisplay('deployBtnContainer', !dirty && !isCreateMode);
+}
+
+function isIisMethodActive() {
+	return activeDeployMethod === DEFAULT_DEPLOY_METHOD;
+}
+
+function setActiveDeployMethod(method) {
+	activeDeployMethod = method || DEFAULT_DEPLOY_METHOD;
+
+	document.querySelectorAll('.deploy-tab').forEach((tab) => {
+		const isActive = tab.dataset.method === activeDeployMethod;
+		tab.classList.toggle('is-active', isActive);
+		tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+	});
+
+	document.querySelectorAll('.deploy-panel').forEach((panel) => {
+		const isActive = panel.dataset.methodPanel === activeDeployMethod;
+		panel.classList.toggle('is-active', isActive);
+	});
+
+	updateModeUI(window.currentData || { isCreateMode: false });
+	updateDirtyUI();
 }
 
 function attachDirtyListeners() {
-	if (dirtyListenersAttached) return;
+	if (dirtyListenersAttached) {
+		return;
+	}
+
 	dirtyListenersAttached = true;
 
 	TRACKED_FIELDS.forEach((id) => {
-		const el = document.getElementById(id);
-		if (el) el.addEventListener('input', updateDirtyUI);
-		if (el) el.addEventListener('change', updateDirtyUI);
+		const el = byId(id);
+		if (el) {
+			el.addEventListener('input', updateDirtyUI);
+			el.addEventListener('change', updateDirtyUI);
+		}
 	});
+
 	TRACKED_CHECKBOXES.forEach((id) => {
-		const el = document.getElementById(id);
-		if (el) el.addEventListener('change', updateDirtyUI);
+		const el = byId(id);
+		if (el) {
+			el.addEventListener('change', updateDirtyUI);
+		}
 	});
-	const pwdEl = document.getElementById('password');
-	if (pwdEl) pwdEl.addEventListener('input', updateDirtyUI);
+
+	const passwordInput = byId('password');
+	if (passwordInput) {
+		passwordInput.addEventListener('input', updateDirtyUI);
+	}
 }
 
-// ═══════════════════════════════════════
-// Message handler from extension
-// ═══════════════════════════════════════
-
-window.addEventListener('message', (event) => {
-	const message = event.data;
-	switch (message.command) {
-		case 'updateData':
-			init(message.data);
-			break;
-		case 'updateHistory':
-			const historyContainer = document.getElementById('historyContainer');
-			if (historyContainer && message.html) {
-				historyContainer.innerHTML = message.html;
-			}
-			break;
+function applyMinimalSectionSeparators() {
+	const sections = Array.from(document.querySelectorAll('.form-section, .history-section'));
+	if (sections.length === 0) {
+		return;
 	}
-});
 
-// ═══════════════════════════════════════
-// Init — populate form from data
-// ═══════════════════════════════════════
+	sections.forEach((section) => {
+		section.style.border = 'none';
+		section.style.borderRadius = '8px';
+		section.style.padding = '16px';
+		section.style.marginBottom = '10px';
+		section.style.background =
+			'var(--vscode-editorWidget-background, rgba(127, 127, 127, 0.08))';
+	});
+}
 
-function init(data) {
-	if (!data) return;
-	window.currentData = data;
-
-	// Header text
-	const displayProjectName = document.getElementById('displayProjectName');
-	if (displayProjectName) displayProjectName.textContent = data.projectName + '.';
-
-	const displayProfileNameText = document.querySelector('#displayProfileName .profile-name-text');
-	if (displayProfileNameText) displayProfileNameText.textContent = data.profileFileName;
-
-	// Deploy button env label
-	updateDeployLabel(data.environment);
-
-	// Form values
-	const envSelect = document.getElementById('environment');
-	if (envSelect) envSelect.value = data.environment;
-
-	const pubUrlInput = document.getElementById('publishUrl');
-	if (pubUrlInput) pubUrlInput.value = data.publishUrl || '';
-
-	const branchInput = document.getElementById('linkedBranch');
-	if (branchInput) branchInput.value = data.linkedBranch || '';
-
-	const siteNameInput = document.getElementById('siteName');
-	if (siteNameInput) siteNameInput.value = data.siteName || '';
-
-	const siteUrlInput = document.getElementById('siteUrl');
-	if (siteUrlInput) siteUrlInput.value = data.siteUrl || '';
-
-	const userInput = document.getElementById('username');
-	if (userInput) userInput.value = data.username || '';
-
-	const openBrowserCheckbox = document.getElementById('openBrowserOnDeploy');
-	if (openBrowserCheckbox) openBrowserCheckbox.checked = data.openBrowserOnDeploy !== false;
-
-	const enableStdoutLogCheckbox = document.getElementById('enableStdoutLog');
-	if (enableStdoutLogCheckbox) enableStdoutLogCheckbox.checked = data.enableStdoutLog === true;
-
-	const logPathInput = document.getElementById('logPath');
-	if (logPathInput) logPathInput.value = data.logPath || '';
-
-	// Snapshot AFTER values are set
-	originalSnapshot = captureSnapshot();
-	attachDirtyListeners();
-
-	// Update mode-specific UI
-	const modeHeader = document.getElementById('modeHeader');
-
-	if (data.isCreateMode) {
-		if (modeHeader) {
-			modeHeader.textContent = 'Create Profile';
-			modeHeader.style.color = 'var(--vscode-charts-green)';
+function setPlaceholders(placeholders) {
+	['profileName', 'publishUrl', 'linkedBranch', 'siteName', 'siteUrl', 'username', 'password'].forEach((id) => {
+		const el = byId(id);
+		if (el && placeholders[id]) {
+			el.placeholder = placeholders[id];
 		}
+	});
+}
 
-		const profileNameText = document.getElementById('displayProfileName');
-		if (profileNameText) {
-			profileNameText.classList.add('non-clickable');
-			profileNameText.title = 'New profile (not saved yet)';
-		}
+function updateDeployLabel(environment) {
+	setText('deployEnvLabel', ENV_NAMES[environment] || environment);
+}
 
-		const deployContainer = document.getElementById('deployBtnContainer');
-		if (deployContainer) deployContainer.style.display = 'none';
+function restoreDeployButton(environment) {
+	const deployButton = byId('btnDeploy');
+	if (!deployButton) {
+		return;
+	}
 
+	deployButton.innerHTML =
+		'<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Deploy to <span id="deployEnvLabel">' +
+		(ENV_NAMES[environment] || environment) +
+		'</span>';
+}
+
+function updateModeUI(data) {
+	const modeHeader = byId('modeHeader');
+	const saveLabel = document.querySelector('#btnSave .btn-save-label');
+	const isCreateMode = Boolean(data.isCreateMode);
+
+	document.body.classList.toggle('is-create-mode', isCreateMode);
+	document.body.classList.toggle('is-edit-mode', !isCreateMode);
+
+	if (modeHeader) {
+		modeHeader.textContent = isCreateMode ? 'Create Profile' : 'Profile Settings';
+		modeHeader.style.color = isCreateMode ? 'var(--vscode-charts-green)' : '';
+	}
+
+	const isIis = isIisMethodActive();
+	setDisplay('deployBtnContainer', !isCreateMode && isIis);
+	setDisplay('btnDelete', !isCreateMode && isIis);
+	setDisplay('cloneGroup', !isCreateMode && isIis);
+	setDisplay('btnOpenProfileFile', !isCreateMode && isIis);
+
+	if (saveLabel) {
+		saveLabel.textContent = isCreateMode ? 'Create Profile' : 'Save Changes';
+	}
+
+	if (isCreateMode) {
 		setPlaceholders({
+			profileName: 'e.g. MyApi_UAT',
 			publishUrl: 'e.g. 192.168.10.5 or my-server.com',
 			linkedBranch: 'e.g. main, develop',
 			siteName: 'e.g. MyWebSite_Staging',
@@ -168,219 +236,189 @@ function init(data) {
 			username: 'e.g. deploy_user',
 			password: 'Enter server password',
 		});
+		return;
+	}
 
-		// Update label
-		const label = document.querySelector('#btnSave .btn-save-label');
-		if (label) label.textContent = 'Create Profile';
+	setPlaceholders({
+		profileName: 'e.g. UAT',
+		publishUrl: '192.168.10.3',
+		linkedBranch: 'e.g. main',
+		siteName: 'MY_APP_API_STAGING',
+		siteUrl: 'https://example.com',
+		username: 'namnh',
+		password: 'Leave empty to keep existing',
+	});
 
-		// Hide delete / clone
-		const deleteBtn = document.getElementById('btnDelete');
-		if (deleteBtn) deleteBtn.style.display = 'none';
-		const cloneBtn = document.getElementById('btnClone');
-		if (cloneBtn) cloneBtn.style.display = 'none';
-	} else {
-		if (modeHeader) {
-			modeHeader.textContent = 'Profile Settings';
-			modeHeader.style.color = '';
+	updateCloneMenuOptions();
+}
+
+function applyDeployingState(isDeploying, environment) {
+	const deployButton = byId('btnDeploy');
+	const controls = document.querySelectorAll('input, select, button');
+
+	if (isDeploying) {
+		if (deployButton) {
+			deployButton.innerHTML = '<div class="spinner"></div> Deploying...';
+			deployButton.disabled = true;
 		}
-
-		setPlaceholders({
-			publishUrl: '192.168.10.3',
-			linkedBranch: 'e.g. main',
-			siteName: 'MY_APP_API_STAGING',
-			siteUrl: 'https://example.com',
-			username: 'namnh',
-			password: 'Leave empty to keep existing',
+		controls.forEach((el) => {
+			el.disabled = true;
 		});
-
-		const deployContainer = document.getElementById('deployBtnContainer');
-		if (deployContainer) deployContainer.style.display = '';
-
-		const deleteBtn = document.getElementById('btnDelete');
-		if (deleteBtn) deleteBtn.style.display = '';
-		const cloneBtn = document.getElementById('btnClone');
-		if (cloneBtn) cloneBtn.style.display = '';
-
-		const profileNameText = document.getElementById('displayProfileName');
-		if (profileNameText) {
-			profileNameText.classList.remove('non-clickable');
-			profileNameText.title = 'Click to open profile file';
-		}
+		return;
 	}
 
-	// Deploy status
-	const deployBtn = document.getElementById('btnDeploy');
-	if (data.isDeploying) {
-		if (deployBtn) {
-			deployBtn.innerHTML = `<div class="spinner"></div> Deploying...`;
-			deployBtn.disabled = true;
-		}
-		document.querySelectorAll('input, select, button').forEach((el) => (el.disabled = true));
-	} else {
-		if (deployBtn) {
-			restoreDeployButton(data.environment);
-			deployBtn.disabled = false;
-		}
-		document.querySelectorAll('input, select, button').forEach((el) => (el.disabled = false));
+	if (deployButton) {
+		restoreDeployButton(environment);
+		deployButton.disabled = false;
 	}
 
-	// Update dirty UI (will hide save/reset in edit mode since snapshot == current)
+	controls.forEach((el) => {
+		el.disabled = false;
+	});
+}
+
+function init(data) {
+	if (!data) {
+		return;
+	}
+
+	window.currentData = data;
+	setText('appVersion', data.appVersion || 'v0.0.0');
+
+	setText('displayProjectName', data.projectName);
+	setValue('profileName', data.profileFileName || '');
+
+	updateDeployLabel(data.environment);
+
+	setValue('environment', data.environment);
+	setValue('publishUrl', data.publishUrl);
+	setValue('linkedBranch', data.linkedBranch);
+	setValue('siteName', data.siteName);
+	setValue('siteUrl', data.siteUrl);
+	setValue('username', data.username);
+	setChecked('openBrowserOnDeploy', data.openBrowserOnDeploy !== false);
+	setChecked('enableStdoutLog', data.enableStdoutLog === true);
+	setValue('logPath', data.logPath);
+
+	updateModeUI(data);
+	applyDeployingState(Boolean(data.isDeploying), data.environment);
+
+	originalSnapshot = captureSnapshot();
+	attachDirtyListeners();
 	updateDirtyUI();
 	clearErrors();
 }
 
-// ═══════════════════════════════════════
-// Deploy button helpers
-// ═══════════════════════════════════════
+function resetForm() {
+	if (!window.currentData) {
+		return;
+	}
 
-const ENV_NAMES = { staging: 'Staging', production: 'Production', dev: 'Dev' };
-
-function updateDeployLabel(env) {
-	const deployEnvLabel = document.getElementById('deployEnvLabel');
-	if (deployEnvLabel) deployEnvLabel.textContent = ENV_NAMES[env] || env;
+	const data = window.currentData;
+	setValue('profileName', data.profileFileName);
+	setValue('environment', data.environment);
+	setValue('publishUrl', data.publishUrl);
+	setValue('linkedBranch', data.linkedBranch);
+	setValue('siteName', data.siteName);
+	setValue('siteUrl', data.siteUrl);
+	setValue('username', data.username);
+	setValue('password', '');
+	setChecked('openBrowserOnDeploy', data.openBrowserOnDeploy !== false);
+	setChecked('enableStdoutLog', data.enableStdoutLog === true);
+	setValue('logPath', data.logPath);
+	updateDeployLabel(data.environment);
 }
 
-function restoreDeployButton(env) {
-	const deployBtn = document.getElementById('btnDeploy');
-	if (!deployBtn) return;
-	deployBtn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Deploy to <span id="deployEnvLabel">${ENV_NAMES[env] || env}</span>`;
+function clearErrors() {
+	const errorBox = byId('formErrors');
+	if (!errorBox) {
+		return;
+	}
+
+	errorBox.style.display = 'none';
+	errorBox.innerHTML = '';
 }
 
-// ═══════════════════════════════════════
-// Signal ready
-// ═══════════════════════════════════════
+function showErrors(errors) {
+	const errorBox = byId('formErrors');
+	if (!errorBox) {
+		return;
+	}
 
-vscode.postMessage({ command: 'ready' });
+	errorBox.innerHTML = '<strong>Please fix the following:</strong><ul>' + errors.map((e) => `<li>${e}</li>`).join('') + '</ul>';
+	errorBox.style.display = 'block';
+}
 
-// ═══════════════════════════════════════
-// Event listeners
-// ═══════════════════════════════════════
+function showNotification(message, type) {
+	const errorBox = byId('formErrors');
+	if (!errorBox) {
+		return;
+	}
 
-document.addEventListener('DOMContentLoaded', () => {
-	// Profile name click
-	const profileNameText = document.getElementById('displayProfileName');
-	if (profileNameText) {
-		profileNameText.addEventListener('click', () => {
-			if (window.currentData && !window.currentData.isCreateMode) {
-				vscode.postMessage({ command: 'openFile' });
+	if (type === 'error') {
+		showErrors([message]);
+		return;
+	}
+
+	errorBox.innerHTML = `<strong>${message}</strong>`;
+	errorBox.style.display = 'block';
+	errorBox.style.borderColor = 'var(--vscode-inputValidation-infoBorder, var(--vscode-textLink-foreground))';
+	errorBox.style.background = 'var(--vscode-inputValidation-infoBackground, var(--vscode-editorWidget-background))';
+
+	window.setTimeout(() => {
+		errorBox.style.display = 'none';
+	}, 2400);
+}
+
+function handleWebviewMessage(event) {
+	const message = event.data;
+	switch (message.command) {
+		case 'updateData':
+			init(message.data);
+			break;
+		case 'updateHistory': {
+			const historyContainer = byId('historyContainer');
+			if (historyContainer && message.html) {
+				historyContainer.innerHTML = message.html;
 			}
-		});
+			break;
+		}
+		case 'showNotification':
+			showNotification(message.message, message.type);
+			break;
+		default:
+			break;
+	}
+}
+
+function bindFormEvents() {
+	const form = byId('profileForm');
+	if (!form) {
+		return;
 	}
 
-	// Environment change → update deploy label
-	const envSelect = document.getElementById('environment');
-	if (envSelect) {
-		envSelect.addEventListener('change', (e) => {
-			updateDeployLabel(e.target.value);
-		});
-	}
-
-	// Deploy button
-	const deployBtn = document.getElementById('btnDeploy');
-	if (deployBtn) {
-		deployBtn.addEventListener('click', () => {
-			vscode.postMessage({ command: 'deploy' });
-		});
-	}
-
-	// View Logs
-	const viewLogsBtn = document.getElementById('btnViewLogs');
-	if (viewLogsBtn) {
-		viewLogsBtn.addEventListener('click', () => {
-			vscode.postMessage({ command: 'viewLogs' });
-		});
-	}
-
-	// Reset button
-	const resetBtn = document.getElementById('btnReset');
-	if (resetBtn) {
-		resetBtn.addEventListener('click', () => {
-			resetForm();
-			clearErrors();
-			updateDirtyUI();
-		});
-	}
-
-	// Delete button
-	const deleteBtn = document.getElementById('btnDelete');
-	if (deleteBtn) {
-		deleteBtn.addEventListener('click', () => {
-			vscode.postMessage({ command: 'delete' });
-		});
-	}
-
-	// Clone button + modal
-	const cloneBtn = document.getElementById('btnClone');
-	const cloneModal = document.getElementById('cloneModal');
-	const btnCloseModal = document.getElementById('btnCloseModal');
-	const btnCancelClone = document.getElementById('btnCancelClone');
-	const btnConfirmClone = document.getElementById('btnConfirmClone');
-	const envRadios = document.querySelectorAll('input[name="targetEnv"]');
-
-	if (cloneBtn) {
-		cloneBtn.addEventListener('click', () => {
-			if (window.currentData) {
-				const currentEnv = window.currentData.environment;
-				envRadios.forEach((radio) => {
-					const option = radio.closest('.env-option');
-					if (radio.value === currentEnv) {
-						option.style.display = 'none';
-						radio.checked = false;
-					} else {
-						option.style.display = 'flex';
-					}
-				});
-			}
-			envRadios.forEach((radio) => (radio.checked = false));
-			btnConfirmClone.disabled = true;
-			cloneModal.classList.add('show');
-		});
-	}
-
-	const closeModal = () => cloneModal.classList.remove('show');
-	if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
-	if (btnCancelClone) btnCancelClone.addEventListener('click', closeModal);
-	if (cloneModal) {
-		cloneModal.addEventListener('click', (e) => {
-			if (e.target === cloneModal) closeModal();
-		});
-	}
-
-	envRadios.forEach((radio) => {
-		radio.addEventListener('change', () => {
-			btnConfirmClone.disabled = !Array.from(envRadios).some((r) => r.checked);
-		});
-	});
-
-	if (btnConfirmClone) {
-		btnConfirmClone.addEventListener('click', () => {
-			const selectedEnv = Array.from(envRadios).find((r) => r.checked)?.value;
-			if (selectedEnv) {
-				vscode.postMessage({ command: 'clone', data: { targetEnvironment: selectedEnv } });
-				closeModal();
-			}
-		});
-	}
-});
-
-// ═══════════════════════════════════════
-// Form submit with validation
-// ═══════════════════════════════════════
-
-const form = document.getElementById('profileForm');
-if (form) {
 	form.addEventListener('submit', (e) => {
 		e.preventDefault();
 
-		const publishUrl = document.getElementById('publishUrl').value.trim();
-		const siteName = document.getElementById('siteName').value.trim();
-		const username = document.getElementById('username').value.trim();
-		const password = document.getElementById('password').value;
+		const profileName = byId('profileName').value.trim();
+		const publishUrl = byId('publishUrl').value.trim();
+		const siteName = byId('siteName').value.trim();
+		const username = byId('username').value.trim();
+		const password = byId('password').value;
 
 		const errors = [];
-		if (!publishUrl) errors.push('Publish URL is required');
-		if (!siteName) errors.push('IIS Site Name is required');
-		if (!username) errors.push('Username is required');
+		if (!profileName) {
+			errors.push('Profile Name is required');
+		}
+		if (!publishUrl) {
+			errors.push('Publish URL is required');
+		}
+		if (!siteName) {
+			errors.push('IIS Site Name is required');
+		}
+		if (!username) {
+			errors.push('Username is required');
+		}
 		if (window.currentData && window.currentData.isCreateMode && !password) {
 			errors.push('Password is required for new profiles');
 		}
@@ -391,88 +429,186 @@ if (form) {
 			return;
 		}
 
-		const submitData = {
-			profileName: window.currentData.profileFileName,
-			environment: document.getElementById('environment').value,
-			publishUrl,
-			linkedBranch: document.getElementById('linkedBranch').value.trim() || undefined,
-			siteName,
-			siteUrl: document.getElementById('siteUrl').value || undefined,
-			username,
-			password: password || 'KEEP_EXISTING',
-			openBrowserOnDeploy: document.getElementById('openBrowserOnDeploy').checked,
-			enableStdoutLog: document.getElementById('enableStdoutLog').checked,
-			logPath: document.getElementById('logPath').value.trim() || undefined,
-		};
-
-		vscode.postMessage({ command: 'save', data: submitData });
+		vscode.postMessage({
+			command: 'save',
+			data: {
+				profileName,
+				environment: byId('environment').value,
+				publishUrl,
+				linkedBranch: byId('linkedBranch').value.trim() || undefined,
+				siteName,
+				siteUrl: byId('siteUrl').value || undefined,
+				username,
+				password: password || 'KEEP_EXISTING',
+				openBrowserOnDeploy: byId('openBrowserOnDeploy').checked,
+				enableStdoutLog: byId('enableStdoutLog').checked,
+				logPath: byId('logPath').value.trim() || undefined,
+			},
+		});
 	});
 }
 
-// ═══════════════════════════════════════
-// Helpers
-// ═══════════════════════════════════════
-
-window.resetForm = function () {
-	if (!window.currentData) return;
-	const data = window.currentData;
-	document.getElementById('environment').value = data.environment;
-	document.getElementById('publishUrl').value = data.publishUrl || '';
-	document.getElementById('linkedBranch').value = data.linkedBranch || '';
-	document.getElementById('siteName').value = data.siteName || '';
-	document.getElementById('siteUrl').value = data.siteUrl || '';
-	document.getElementById('username').value = data.username || '';
-	document.getElementById('password').value = '';
-	document.getElementById('openBrowserOnDeploy').checked = data.openBrowserOnDeploy !== false;
-	document.getElementById('enableStdoutLog').checked = data.enableStdoutLog === true;
-	document.getElementById('logPath').value = data.logPath || '';
-	updateDeployLabel(data.environment);
-};
-
-function resetForm() {
-	window.resetForm();
-}
-
-function clearErrors() {
-	const errorBox = document.getElementById('formErrors');
-	if (errorBox) {
-		errorBox.style.display = 'none';
-		errorBox.innerHTML = '';
-	}
-}
-
-function showErrors(errors) {
-	const errorBox = document.getElementById('formErrors');
-	if (errorBox) {
-		errorBox.innerHTML =
-			'<strong>⚠️ Please fix the following:</strong><ul>' +
-			errors.map((e) => '<li>' + e + '</li>').join('') +
-			'</ul>';
-		errorBox.style.display = 'block';
-	}
-}
-
-function setPlaceholders(placeholders) {
-	const ids = ['publishUrl', 'linkedBranch', 'siteName', 'siteUrl', 'username', 'password'];
-	ids.forEach((id) => {
-		const el = document.getElementById(id);
-		if (el && placeholders[id]) el.placeholder = placeholders[id];
-	});
-}
-
-// ═══════════════════════════════════════
-// Handle messages from VS Code
-// ═══════════════════════════════════════
-window.addEventListener('message', (event) => {
-	const message = event.data;
-
-	switch (message.command) {
-		case 'showNotification':
-			if (message.type === 'success') {
-				vscode.window.showInformationMessage('✅ ' + message.message);
-			} else if (message.type === 'error') {
-				vscode.window.showErrorMessage('❌ ' + message.message);
+function bindUIEvents() {
+	const openProfileFileButton = byId('btnOpenProfileFile');
+	if (openProfileFileButton) {
+		openProfileFileButton.addEventListener('click', () => {
+			if (window.currentData && !window.currentData.isCreateMode) {
+				vscode.postMessage({ command: 'openFile' });
 			}
-			break;
+		});
 	}
+
+	const environment = byId('environment');
+	if (environment) {
+		environment.addEventListener('change', (event) => {
+			updateDeployLabel(event.target.value);
+		});
+	}
+
+	const deployButton = byId('btnDeploy');
+	if (deployButton) {
+		deployButton.addEventListener('click', () => {
+			vscode.postMessage({ command: 'deploy' });
+		});
+	}
+
+	const viewLogsButton = byId('btnViewLogs');
+	if (viewLogsButton) {
+		viewLogsButton.addEventListener('click', () => {
+			vscode.postMessage({ command: 'viewLogs' });
+		});
+	}
+
+	const resetButton = byId('btnReset');
+	if (resetButton) {
+		resetButton.addEventListener('click', () => {
+			resetForm();
+			clearErrors();
+			updateDirtyUI();
+		});
+	}
+
+	const deleteButton = byId('btnDelete');
+	if (deleteButton) {
+		deleteButton.addEventListener('click', () => {
+			vscode.postMessage({ command: 'delete' });
+		});
+	}
+
+	const supportButton = byId('btnSupportMe');
+	if (supportButton) {
+		supportButton.addEventListener('click', () => {
+			vscode.postMessage({ command: 'openSupport' });
+		});
+	}
+
+	const reportIssueButton = byId('btnReportIssue');
+	if (reportIssueButton) {
+		reportIssueButton.addEventListener('click', () => {
+			vscode.postMessage({ command: 'openIssue' });
+		});
+	}
+
+	bindCloneDropdownEvents();
+	bindDeployMethodTabs();
+}
+
+function bindDeployMethodTabs() {
+	const tabs = Array.from(document.querySelectorAll('.deploy-tab'));
+	if (tabs.length === 0) {
+		return;
+	}
+
+	tabs.forEach((tab) => {
+		tab.addEventListener('click', () => {
+			const method = tab.dataset.method || DEFAULT_DEPLOY_METHOD;
+			setActiveDeployMethod(method);
+		});
+	});
+}
+
+function updateCloneMenuOptions() {
+	const currentEnvironment = window.currentData?.environment;
+	const cloneButton = byId('btnClone');
+	const menuItems = Array.from(document.querySelectorAll('#cloneMenu .clone-menu-item'));
+
+	let hasAvailableOption = false;
+	menuItems.forEach((item) => {
+		const environment = item.dataset.cloneEnv;
+		const isCurrent = environment === currentEnvironment;
+		item.hidden = isCurrent;
+		if (!isCurrent) {
+			hasAvailableOption = true;
+		}
+	});
+
+	if (cloneButton) {
+		cloneButton.disabled = !hasAvailableOption;
+	}
+}
+
+function bindCloneDropdownEvents() {
+	const cloneGroup = byId('cloneGroup');
+	const cloneButton = byId('btnClone');
+	const cloneMenu = byId('cloneMenu');
+
+	if (!cloneGroup || !cloneButton || !cloneMenu) {
+		return;
+	}
+
+	const closeMenu = () => {
+		cloneGroup.classList.remove('open');
+		cloneButton.setAttribute('aria-expanded', 'false');
+	};
+
+	cloneButton.addEventListener('click', (event) => {
+		event.stopPropagation();
+		updateCloneMenuOptions();
+		const isOpen = cloneGroup.classList.contains('open');
+		if (isOpen) {
+			closeMenu();
+			return;
+		}
+
+		cloneGroup.classList.add('open');
+		cloneButton.setAttribute('aria-expanded', 'true');
+	});
+
+	cloneMenu.addEventListener('click', (event) => {
+		const target = event.target.closest('.clone-menu-item');
+		if (!target || target.hidden) {
+			return;
+		}
+
+		const environment = target.dataset.cloneEnv;
+		if (!environment) {
+			return;
+		}
+
+		vscode.postMessage({ command: 'clone', data: { targetEnvironment: environment } });
+		closeMenu();
+	});
+
+	document.addEventListener('click', (event) => {
+		if (!cloneGroup.contains(event.target)) {
+			closeMenu();
+		}
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			closeMenu();
+		}
+	});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+	bindUIEvents();
+	bindFormEvents();
+	setActiveDeployMethod(DEFAULT_DEPLOY_METHOD);
+	applyMinimalSectionSeparators();
+	window.resetForm = resetForm;
 });
+
+window.addEventListener('message', handleWebviewMessage);
+vscode.postMessage({ command: 'ready' });

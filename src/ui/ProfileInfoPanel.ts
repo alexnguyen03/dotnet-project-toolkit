@@ -120,6 +120,18 @@ export class ProfileInfoPanel {
 					case 'clone':
 						await this.handleCloneProfile(message.data);
 						break;
+					case 'openSupport':
+						await vscode.env.openExternal(
+							vscode.Uri.parse('https://github.com/sponsors/alexnguyen03')
+						);
+						break;
+					case 'openIssue':
+						await vscode.env.openExternal(
+							vscode.Uri.parse(
+								'https://github.com/alexnguyen03/dotnet-project-toolkit/issues'
+							)
+						);
+						break;
 				}
 			},
 			null,
@@ -360,6 +372,7 @@ export class ProfileInfoPanel {
 		const profile = this.currentProfileInfo;
 
 		const baseData = {
+			appVersion: this.getExtensionVersion(),
 			projectName: this.currentProjectName,
 			profileFileName: profile.fileName,
 			environment: profile.environment,
@@ -382,6 +395,20 @@ export class ProfileInfoPanel {
 		if (this.panel && this.panel.webview) {
 			await this.panel.webview.postMessage({ command: 'updateData', data });
 		}
+	}
+
+	private getExtensionVersion(): string {
+		try {
+			const packageJsonPath = path.join(this.extensionUri.fsPath, 'package.json');
+			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+			if (typeof packageJson.version === 'string' && packageJson.version.length > 0) {
+				return `v${packageJson.version}`;
+			}
+		} catch (error) {
+			this.outputChannel.appendLine(`[ProfileInfo] Failed to read extension version: ${error}`);
+		}
+
+		return 'v0.0.0';
 	}
 
 	private async sendHistoryUpdate() {
@@ -663,7 +690,7 @@ export class ProfileInfoPanel {
 		this.panel.dispose();
 		while (this.disposables.length) {
 			const d = this.disposables.pop();
-			if (d) d.dispose();
+			if (d) {d.dispose();}
 		}
 	}
 }

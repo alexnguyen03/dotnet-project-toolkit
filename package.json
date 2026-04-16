@@ -33,36 +33,6 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "dotnet-project-toolkit.deployToStagingApi",
-				"title": ".NET Project Toolkit: Deploy API to Staging",
-				"icon": "$(rocket)"
-			},
-			{
-				"command": "dotnet-project-toolkit.deployToStagingClient",
-				"title": ".NET Project Toolkit: Deploy Client to Staging",
-				"icon": "$(rocket)"
-			},
-			{
-				"command": "dotnet-project-toolkit.deployToProdApi",
-				"title": ".NET Project Toolkit: Deploy API to Production",
-				"icon": "$(warning)"
-			},
-			{
-				"command": "dotnet-project-toolkit.deployToProdClient",
-				"title": ".NET Project Toolkit: Deploy Client to Production",
-				"icon": "$(warning)"
-			},
-			{
-				"command": "dotnet-project-toolkit.selectProfile",
-				"title": ".NET Project Toolkit: Select Publish Profile",
-				"icon": "$(list-selection)"
-			},
-			{
-				"command": "dotnet-project-toolkit.configureCredentials",
-				"title": ".NET Project Toolkit: Configure Deployment Credentials",
-				"icon": "$(key)"
-			},
-			{
 				"command": "dotnet-project-toolkit.refreshHistory",
 				"title": ".NET Project Toolkit: Refresh Deployment History",
 				"icon": "$(refresh)"
@@ -84,8 +54,7 @@
 			},
 			{
 				"command": "dotnet-project-toolkit.createPublishProfile",
-				"title": ".NET Project Toolkit: Create Publish Profile",
-				"icon": "$(add)"
+				"title": ".NET Project Toolkit: Create Publish Profile"
 			},
 			{
 				"command": "dotnet-project-toolkit.deletePublishProfile",
