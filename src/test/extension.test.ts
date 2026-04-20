@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import { ProfileXmlGenerator } from '../generators/ProfileXmlGenerator';
 import { DeployEnvironment } from '../models/ProjectModels';
 import { EnvVarPasswordStorage } from '../strategies/EnvVarPasswordStorage';
+import { DeploymentService } from '../services/DeploymentService';
 import { runProcess } from '../utils/ProcessRunner';
 
 function collectTypeScriptFiles(dir: string): string[] {
@@ -117,5 +118,74 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(retrieved, value);
 
 		delete process.env[key];
+	});
+
+	test('DeploymentService builds publish args without password when credential is missing', () => {
+		const outputChannel = {
+			append: (_message: string) => {},
+			appendLine: (_message: string) => {},
+		} as unknown as vscode.OutputChannel;
+		const passwordStorage = {
+			type: 'secret',
+			store: async () => true,
+			retrieve: async () => undefined,
+			delete: async () => true,
+			generateKey: (projectName: string, profileName: string) =>
+				`DEPLOY_PWD_${projectName}_${profileName}`,
+		};
+
+		const service = new DeploymentService(
+			outputChannel,
+			passwordStorage as any
+		) as unknown as {
+			buildPublishConfig: (
+				projectPath: string,
+				profileInfo: { fileName: string },
+				password?: string
+			) => { args: string[]; env: NodeJS.ProcessEnv };
+		};
+
+		const config = service.buildPublishConfig(
+			'C:\\repo\\Api\\Api.csproj',
+			{ fileName: 'staging-api' },
+			undefined
+		);
+
+		assert.ok(!config.args.some((a) => a.includes('/p:Password=')));
+	});
+
+	test('DeploymentService secure publish args include password indirection when credential exists', () => {
+		const outputChannel = {
+			append: (_message: string) => {},
+			appendLine: (_message: string) => {},
+		} as unknown as vscode.OutputChannel;
+		const passwordStorage = {
+			type: 'secret',
+			store: async () => true,
+			retrieve: async () => undefined,
+			delete: async () => true,
+			generateKey: (projectName: string, profileName: string) =>
+				`DEPLOY_PWD_${projectName}_${profileName}`,
+		};
+
+		const service = new DeploymentService(
+			outputChannel,
+			passwordStorage as any
+		) as unknown as {
+			buildPublishConfig: (
+				projectPath: string,
+				profileInfo: { fileName: string },
+				password?: string
+			) => { args: string[]; env: NodeJS.ProcessEnv };
+		};
+
+		const config = service.buildPublishConfig(
+			'C:\\repo\\Api\\Api.csproj',
+			{ fileName: 'staging-api' },
+			'TopSecret!'
+		);
+
+		assert.ok(config.args.some((a) => a === '/p:Password=$(DOTNET_PUBLISH_PASSWORD)'));
+		assert.strictEqual(config.env.DOTNET_PUBLISH_PASSWORD, 'TopSecret!');
 	});
 });

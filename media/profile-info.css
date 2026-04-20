@@ -181,39 +181,29 @@ code {
    Header
 ═══════════════════════════════════════ */
 .page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-end;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
 	margin-bottom: 24px;
 	padding-bottom: 16px;
 	border-bottom: 1px solid var(--input-border);
 }
 
 .header-left {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
+	justify-self: start;
 }
 
-.header-eyebrow {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+.header-center {
+	justify-self: center;
+	text-align: center;
 }
 
-.eyebrow-mode {
-	font-size: 10px;
+.page-title {
+	font-size: 12px;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.15em;
 	color: var(--link);
-}
-
-.eyebrow-divider {
-	display: block;
-	width: 28px;
-	height: 1px;
-	background: var(--input-border);
 }
 
 /* Environment pill (replaces old badge) */
@@ -306,10 +296,8 @@ code {
 
 /* Right Header Side */
 .header-right {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 0;
+	justify-self: end;
+	text-align: right;
 }
 
 .brand-name {
@@ -318,7 +306,19 @@ code {
 	color: var(--fg-muted);
 	text-transform: uppercase;
 	letter-spacing: 0.15em;
-	padding-right: 4px;
+}
+
+.header-version {
+	font-size: 10px;
+	color: var(--fg-muted);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.header-version span {
+	color: var(--fg);
+	font-weight: 600;
+	margin-left: 4px;
 }
 
 .btn-deploy {

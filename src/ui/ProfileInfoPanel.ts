@@ -372,7 +372,7 @@ export class ProfileInfoPanel {
 		const profile = this.currentProfileInfo;
 
 		const baseData = {
-			appVersion: this.getExtensionVersion(),
+			currentVersion: this.getExtensionVersion(),
 			projectName: this.currentProjectName,
 			profileFileName: profile.fileName,
 			environment: profile.environment,

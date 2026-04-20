@@ -59,11 +59,9 @@ export class DeploymentService implements IDeploymentService {
 			onProgress?.('Retrieving credentials...', 10);
 			const password = await this.getPassword(projectName, profileInfo.fileName);
 			if (!password) {
-				return {
-					success: false,
-					errorMessage: 'Password not found. Please configure credentials first.',
-					output: '',
-				};
+				this.log(
+					`No stored password found for ${projectName}/${profileInfo.fileName}. Trying profile-native credentials (.pubxml.user) first.`
+				);
 			}
 
 			onProgress?.(`Building ${projectName} (${profileInfo.fileName})...`, 30);
@@ -79,11 +77,30 @@ export class DeploymentService implements IDeploymentService {
 				path.dirname(projectPath),
 				publishConfig.env
 			);
+			let finalResult = result;
 
-			if (result.exitCode === 0) {
+			// Fallback for environments where MSBuild does not resolve env vars as expected.
+			// We only use this when a password exists and secure mode failed.
+			if (result.exitCode !== 0 && password) {
+				this.log(
+					'Secure password injection failed. Retrying publish with inline password property for compatibility.'
+				);
+				const fallbackConfig = this.buildPublishConfigWithInlinePassword(
+					projectPath,
+					profileInfo,
+					password
+				);
+				finalResult = await this.executeCommand(
+					fallbackConfig.args,
+					path.dirname(projectPath),
+					fallbackConfig.env
+				);
+			}
+
+			if (finalResult.exitCode === 0) {
 				onProgress?.('Deployment complete!', 90);
 
-				if (profileInfo.enableStdoutLog && this.webConfigModifier) {
+				if (profileInfo.enableStdoutLog && this.webConfigModifier && password) {
 					try {
 						onProgress?.('Configuring stdout logging...', 95);
 						await this.webConfigModifier.modifyStdoutLogging(
@@ -96,6 +113,10 @@ export class DeploymentService implements IDeploymentService {
 					} catch (error: any) {
 						this.log(`Warning: Could not modify web.config: ${error.message}`);
 					}
+				} else if (profileInfo.enableStdoutLog && !password) {
+					this.log(
+						'Skipping web.config stdout update because no stored password is available for msdeploy authentication.'
+					);
 				}
 
 				let healthCheckResult: DeploymentResult['healthCheckResult'];
@@ -134,15 +155,20 @@ export class DeploymentService implements IDeploymentService {
 				onProgress?.(`${projectName} (${profileInfo.fileName}) deployed successfully!`, 100);
 				return {
 					success: true,
-					output: result.output,
+					output: finalResult.output,
 					healthCheckResult,
 				};
 			}
 
+			const errorMessage = this.extractErrorMessage(finalResult.output);
+			const passwordHint = password
+				? ''
+				: '\nNo stored password was found. If publish profile credentials are not available in .pubxml.user, save password in extension Profile Info.';
+
 			return {
 				success: false,
-				errorMessage: this.extractErrorMessage(result.output),
-				output: result.output,
+				errorMessage: `${errorMessage}${passwordHint}`,
+				output: finalResult.output,
 			};
 		} catch (error: any) {
 			this.log(`Deployment error: ${error.message}`);
@@ -162,22 +188,46 @@ export class DeploymentService implements IDeploymentService {
 	private buildPublishConfig(
 		projectPath: string,
 		profileInfo: PublishProfileInfo,
-		password: string
+		password?: string
 	): { args: string[]; env: NodeJS.ProcessEnv } {
 		const passwordEnvVar = 'DOTNET_PUBLISH_PASSWORD';
+		const args = [
+			'publish',
+			projectPath,
+			`/p:PublishProfile=${profileInfo.fileName}`,
+			'/p:Configuration=Release',
+			'/p:AllowUntrustedCertificate=true',
+		];
+		if (password) {
+			args.push('/p:Password=$(DOTNET_PUBLISH_PASSWORD)');
+		}
 
+		return {
+			args,
+			env: {
+				...process.env,
+				...(password ? { [passwordEnvVar]: password } : {}),
+				DOTNET_SYSTEM_NET_HTTP_USESOCKETSHANDLER: '0',
+			},
+		};
+	}
+
+	private buildPublishConfigWithInlinePassword(
+		projectPath: string,
+		profileInfo: PublishProfileInfo,
+		password: string
+	): { args: string[]; env: NodeJS.ProcessEnv } {
 		return {
 			args: [
 				'publish',
 				projectPath,
 				`/p:PublishProfile=${profileInfo.fileName}`,
-				'/p:Password=$(DOTNET_PUBLISH_PASSWORD)',
+				`/p:Password=${password}`,
 				'/p:Configuration=Release',
 				'/p:AllowUntrustedCertificate=true',
 			],
 			env: {
 				...process.env,
-				[passwordEnvVar]: password,
 				DOTNET_SYSTEM_NET_HTTP_USESOCKETSHANDLER: '0',
 			},
 		};

@@ -283,7 +283,7 @@ function init(data) {
 	}
 
 	window.currentData = data;
-	setText('appVersion', data.appVersion || 'v0.0.0');
+	setText('currentVersion', data.currentVersion || 'v0.0.0');
 
 	setText('displayProjectName', data.projectName);
 	setValue('profileName', data.profileFileName || '');

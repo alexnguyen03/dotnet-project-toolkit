@@ -114,7 +114,7 @@ export class RollbackService implements IRollbackService {
 		profileInfo: PublishProfileInfo,
 		password: string
 	): Promise<{ exitCode: number; output: string }> {
-		const result = await runProcess(
+		const secureResult = await runProcess(
 			'dotnet',
 			[
 				'publish',
@@ -138,6 +138,36 @@ export class RollbackService implements IRollbackService {
 				},
 			}
 		);
+		let result = secureResult;
+
+		if (secureResult.exitCode !== 0) {
+			this.outputChannel.appendLine(
+				'[Rollback] Secure password injection failed, retrying with inline password property for compatibility...'
+			);
+			result = await runProcess(
+				'dotnet',
+				[
+					'publish',
+					projectPath,
+					`/p:PublishProfile=${profileInfo.fileName}`,
+					`/p:Password=${password}`,
+					'/p:Configuration=Release',
+				],
+				{
+					cwd: path.dirname(projectPath),
+					env: {
+						...process.env,
+					},
+					maxOutputBytes: 10 * 1024 * 1024,
+					onStdout: (text) => {
+						this.outputChannel.append(text);
+					},
+					onStderr: (text) => {
+						this.outputChannel.append(text);
+					},
+				}
+			);
+		}
 
 		if (result.timedOut) {
 			this.outputChannel.appendLine('[Rollback] Deployment timed out');
