@@ -208,7 +208,6 @@ export class DeployProfileCommand implements ICommand {
 
 			if (openBrowser && profile.siteUrl) {
 				try {
-					const url = new URL(profile.siteUrl);
 					this.outputChannel.appendLine(`[Browser] Opening site: ${profile.siteUrl}`);
 					await vscode.env.openExternal(vscode.Uri.parse(profile.siteUrl));
 					vscode.window.showInformationMessage(

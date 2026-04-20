@@ -65,7 +65,7 @@ export class EditProfileCommand extends BaseCommand {
 		if (success) {
 			vscode.window.showInformationMessage(`✅ Profile "${data.profileName}" updated!`);
 			this.onRefresh();
-			this.log(`✓ Updated: ${data.profileName}`);
+			this.log(`Updated: ${data.profileName}`);
 		} else {
 			vscode.window.showErrorMessage('Failed to update profile');
 		}

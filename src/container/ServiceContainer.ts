@@ -39,6 +39,7 @@ import { ProfileRepository } from '../repositories/ProfileRepository';
 import { EnvironmentDetector } from '../detectors/EnvironmentDetector';
 import { WebConfigModifier, IWebConfigModifier } from '../services/WebConfigModifier';
 import { LogViewerService, ILogViewerService } from '../services/LogViewerService';
+import { withTimestampedAppendLine } from '../utils/OutputChannelTimestamp';
 
 /**
  * Service Container - Dependency Injection
@@ -71,7 +72,9 @@ export class ServiceContainer {
 
 	private constructor(context: vscode.ExtensionContext) {
 		// Create output channel
-		this.outputChannel = vscode.window.createOutputChannel('.NET Toolkit');
+		this.outputChannel = withTimestampedAppendLine(
+			vscode.window.createOutputChannel('.NET Project Toolkit')
+		);
 
 		// Create infrastructure services
 		this.configService = new ConfigurationService();

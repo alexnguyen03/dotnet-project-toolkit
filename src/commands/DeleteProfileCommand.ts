@@ -58,7 +58,7 @@ export class DeleteProfileCommand extends BaseCommand {
 
 			vscode.window.showInformationMessage(`✅ Profile "${profileInfo.fileName}" deleted!`);
 			this.onRefresh();
-			this.log(`✓ Deleted: ${profileInfo.fileName}`);
+			this.log(`Deleted: ${profileInfo.fileName}`);
 		} else {
 			vscode.window.showErrorMessage('Failed to delete profile');
 		}

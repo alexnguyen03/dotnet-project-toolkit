@@ -85,7 +85,7 @@ Deploy, watch, and debug .NET projects in one VS Code extension.
 ## Quick Start
 
 1. Open a workspace that contains one or more .NET projects.
-2. Open the **.NET Toolkit** activity bar view.
+2. Open the **.NET Project Toolkit** activity bar view.
 3. In **Publish**, expand a project and click **Deploy** on a profile.
 4. Open **Profile Info** to edit target URL, credentials, log path, and deployment options.
 

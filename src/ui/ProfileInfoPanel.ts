@@ -125,6 +125,13 @@ export class ProfileInfoPanel {
 							vscode.Uri.parse('https://github.com/sponsors/alexnguyen03')
 						);
 						break;
+					case 'openStar':
+						await vscode.env.openExternal(
+							vscode.Uri.parse(
+								'https://github.com/alexnguyen03/dotnet-project-toolkit/stargazers'
+							)
+						);
+						break;
 					case 'openIssue':
 						await vscode.env.openExternal(
 							vscode.Uri.parse(
@@ -281,6 +288,9 @@ export class ProfileInfoPanel {
 	private async saveProfile(data: ProfileWizardData) {
 		try {
 			this.outputChannel.appendLine(`[ProfileInfo] Saving: ${data.profileName}`);
+			const previousFileName = this.currentProfileInfo.fileName;
+			const previousProfilePath = this.currentProfileInfo.path;
+			const isRename = !this.isCreateMode && previousFileName !== data.profileName;
 
 			// Get project info
 			let projectInfo: ProjectInfo;
@@ -299,6 +309,22 @@ export class ProfileInfoPanel {
 				};
 			}
 
+			if (isRename && previousProfilePath) {
+				const targetProfilePath = path.join(
+					path.dirname(previousProfilePath),
+					`${data.profileName}.pubxml`
+				);
+				const normalizedOld = path.normalize(previousProfilePath);
+				const normalizedTarget = path.normalize(targetProfilePath);
+
+				if (normalizedOld !== normalizedTarget && fs.existsSync(targetProfilePath)) {
+					vscode.window.showErrorMessage(
+						`Cannot rename profile. "${data.profileName}" already exists.`
+					);
+					return;
+				}
+			}
+
 			// Save profile (create or update)
 			const profilePath = await this.profileService.create(
 				projectInfo,
@@ -307,13 +333,50 @@ export class ProfileInfoPanel {
 			);
 
 			if (profilePath) {
+				const previousPasswordKey = this.passwordStorage.generateKey(
+					this.currentProjectName,
+					previousFileName
+				);
+				const newPasswordKey = this.passwordStorage.generateKey(
+					this.currentProjectName,
+					data.profileName
+				);
+
+				if (isRename && previousProfilePath) {
+					const normalizedOldPath = path.normalize(previousProfilePath);
+					const normalizedNewPath = path.normalize(profilePath);
+
+					if (normalizedOldPath !== normalizedNewPath && fs.existsSync(previousProfilePath)) {
+						await fs.promises.unlink(previousProfilePath);
+						this.outputChannel.appendLine(
+							`[ProfileInfo] Removed old profile file: ${previousProfilePath}`
+						);
+					}
+
+					const oldUserFilePath = `${previousProfilePath}.user`;
+					const newUserFilePath = `${profilePath}.user`;
+					if (fs.existsSync(oldUserFilePath) && !fs.existsSync(newUserFilePath)) {
+						await fs.promises.rename(oldUserFilePath, newUserFilePath);
+						this.outputChannel.appendLine(
+							`[ProfileInfo] Renamed profile user file to: ${newUserFilePath}`
+						);
+					}
+
+					if (data.password === 'KEEP_EXISTING' && previousPasswordKey !== newPasswordKey) {
+						const existingPassword = await this.passwordStorage.retrieve(previousPasswordKey);
+						if (existingPassword) {
+							await this.passwordStorage.store(newPasswordKey, existingPassword);
+						}
+					}
+
+					if (previousPasswordKey !== newPasswordKey) {
+						await this.passwordStorage.delete(previousPasswordKey);
+					}
+				}
+
 				// Save password if provided
 				if (data.password && data.password !== 'KEEP_EXISTING') {
-					const passwordKey = this.passwordStorage.generateKey(
-						this.currentProjectName,
-						data.profileName
-					);
-					await this.passwordStorage.store(passwordKey, data.password);
+					await this.passwordStorage.store(newPasswordKey, data.password);
 				}
 
 				const message = this.isCreateMode
@@ -342,10 +405,18 @@ export class ProfileInfoPanel {
 
 				this.panel.title = `${this.currentProjectName} / ${this.currentProfileInfo.fileName}`;
 				this.isCreateMode = false; // Switch to edit mode after first save
+				if (isRename) {
+					const newPanelKey = `view:${this.currentProjectName}:${data.profileName}`;
+					if (this.panelKey !== newPanelKey) {
+						ProfileInfoPanel.panels.delete(this.panelKey);
+						this.panelKey = newPanelKey;
+						ProfileInfoPanel.panels.set(this.panelKey, this);
+					}
+				}
 
 				this.onRefresh();
 				this.update(); // Re-render webview with new data
-				this.outputChannel.appendLine(`[ProfileInfo] ✓ Saved successfully`);
+				this.outputChannel.appendLine('[ProfileInfo] Saved successfully');
 			}
 		} catch (error) {
 			vscode.window.showErrorMessage(`Failed to save: ${error}`);

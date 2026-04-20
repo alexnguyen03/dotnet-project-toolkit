@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { PublishProfileInfo } from '../models/ProjectModels';
 import { runProcess } from '../utils/ProcessRunner';
+import { withTimestampedAppendLine } from '../utils/OutputChannelTimestamp';
 
 /**
  * Log Viewer Service Interface
@@ -27,7 +28,9 @@ export class LogViewerService implements ILogViewerService {
 	private currentProfileInfo: PublishProfileInfo | null = null;
 
 	constructor(private readonly extensionOutputChannel: vscode.OutputChannel) {
-		this.outputChannel = vscode.window.createOutputChannel('IIS Logs - Quick View');
+		this.outputChannel = withTimestampedAppendLine(
+			vscode.window.createOutputChannel('IIS Logs - Quick View')
+		);
 	}
 
 	async viewLogs(

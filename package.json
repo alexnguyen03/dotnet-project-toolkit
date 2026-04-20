@@ -167,7 +167,7 @@
 			"activitybar": [
 				{
 					"id": "dotnet-toolkit",
-					"title": ".NET Toolkit",
+					"title": ".NET Project Toolkit",
 					"icon": "resources/icons/main-icon.svg"
 				}
 			]
@@ -198,7 +198,7 @@
 					"id": "dotnetToolkitExplorer",
 					"name": ".NET Project Toolkit",
 					"icon": "resources/icons/main-icon.svg",
-					"contextualTitle": ".NET Toolkit"
+					"contextualTitle": ".NET Project Toolkit"
 				}
 			]
 		},

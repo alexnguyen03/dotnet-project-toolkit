@@ -502,6 +502,13 @@ function bindUIEvents() {
 		});
 	}
 
+	const starProjectButton = byId('btnStarProject');
+	if (starProjectButton) {
+		starProjectButton.addEventListener('click', () => {
+			vscode.postMessage({ command: 'openStar' });
+		});
+	}
+
 	const reportIssueButton = byId('btnReportIssue');
 	if (reportIssueButton) {
 		reportIssueButton.addEventListener('click', () => {
