@@ -306,6 +306,29 @@ export class DebugService {
 	}
 
 	/**
+	 * Restart debugging session
+	 */
+	public async restartDebugging(project: ProjectInfo): Promise<void> {
+		const key = this.normalizePath(project.csprojPath);
+		const sessionInfo = this.activeSessions.get(key);
+
+		if (sessionInfo) {
+			if (sessionInfo.session) {
+				// True debugger session - trigger standard VS Code debug restart command
+				await vscode.commands.executeCommand('workbench.action.debug.restart');
+			} else if (sessionInfo.terminal) {
+				// Terminal fallback mode - send Ctrl+C to terminate, wait, then run dotnet run again
+				sessionInfo.terminal.show();
+				sessionInfo.terminal.sendText('\u0003', false);
+				await new Promise((resolve) => setTimeout(resolve, 800));
+				sessionInfo.terminal.sendText('dotnet run');
+			}
+		} else {
+			await this.startDebugging(project);
+		}
+	}
+
+	/**
 	 * Stop all projects in a debug group
 	 */
 	public async stopGroup(group: DebugGroup, allProjects: ProjectInfo[]): Promise<void> {

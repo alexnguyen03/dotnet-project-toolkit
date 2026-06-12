@@ -102,17 +102,16 @@ export class RunService {
 		const currentState = this.getProjectState(project.csprojPath);
 
 		if (currentState === 'watching') {
-			// Rewatch: stop and start watch again
-			this.watchService.stopWatch(project.csprojPath);
-			await new Promise((resolve) => setTimeout(resolve, 500));
-			await this.watchService.runWatch(project);
-			vscode.window.showInformationMessage(`Restarted watch for ${project.name}`);
+			const success = this.watchService.restartWatch(project.csprojPath);
+			if (success) {
+				vscode.window.showInformationMessage(`Restarted watch (Ctrl+R) for ${project.name}`);
+			} else {
+				await this.watchService.runWatch(project);
+				vscode.window.showInformationMessage(`Started watch for ${project.name}`);
+			}
 		} else if (currentState === 'debugging') {
-			// Redebug: stop and start debug again
-			await this.debugService.stopDebugging(project.csprojPath);
-			await new Promise((resolve) => setTimeout(resolve, 500));
-			await this.debugService.startDebugging(project);
-			vscode.window.showInformationMessage(`Restarted debug for ${project.name}`);
+			await this.debugService.restartDebugging(project);
+			vscode.window.showInformationMessage(`Restarted debug session for ${project.name}`);
 		} else {
 			vscode.window.showWarningMessage(`${project.name} is not running`);
 		}

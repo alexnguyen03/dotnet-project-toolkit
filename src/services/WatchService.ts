@@ -114,6 +114,20 @@ export class WatchService {
 	}
 
 	/**
+	 * Send Ctrl+R to the watch terminal to trigger manual restart
+	 */
+	public restartWatch(csprojPath: string): boolean {
+		const key = this.normalizePath(csprojPath);
+		const watch = this.runningWatches.get(key);
+		if (watch && watch.terminal) {
+			watch.terminal.show();
+			watch.terminal.sendText('\u0012', false);
+			return true;
+		}
+		return false;
+	}
+
+	/**
 	 * Stop all running watches
 	 */
 	public stopAll(): void {
