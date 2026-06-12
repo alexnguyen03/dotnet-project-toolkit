@@ -186,6 +186,16 @@
 				"command": "dotnet-project-toolkit.testNotification",
 				"title": "Test Notification",
 				"icon": "$(broadcast)"
+			},
+			{
+				"command": "dotnet-project-toolkit.ports.refresh",
+				"title": "Refresh Ports",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "dotnet-project-toolkit.ports.kill",
+				"title": "Kill Process",
+				"icon": "$(trash)"
 			}
 		],
 		"viewsContainers": {
@@ -216,6 +226,12 @@
 					"name": "History",
 					"icon": "$(history)",
 					"contextualTitle": "Deployment History"
+				},
+				{
+					"id": "dotnetPorts",
+					"name": "Ports",
+					"icon": "$(plug)",
+					"contextualTitle": "Active Ports"
 				}
 			],
 			"explorer": [
@@ -251,6 +267,11 @@
 				{
 					"command": "dotnet-project-toolkit.debug.createGroup",
 					"when": "view == dotnetRun",
+					"group": "navigation"
+				},
+				{
+					"command": "dotnet-project-toolkit.ports.refresh",
+					"when": "view == dotnetPorts",
 					"group": "navigation"
 				}
 			],
@@ -478,6 +499,11 @@
 				{
 					"command": "dotnet-project-toolkit.debug.deleteGroup",
 					"when": "view == dotnetToolkitExplorer && viewItem == debugGroupRunning",
+					"group": "inline"
+				},
+				{
+					"command": "dotnet-project-toolkit.ports.kill",
+					"when": "view == dotnetPorts && viewItem == activePort",
 					"group": "inline"
 				}
 			]

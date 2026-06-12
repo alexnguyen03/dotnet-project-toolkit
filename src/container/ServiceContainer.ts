@@ -29,6 +29,8 @@ import { DebugTreeProvider } from '../ui/debug/DebugTreeProvider';
 import { PublishTreeProvider } from '../ui/publish/PublishTreeProvider';
 import { RunService } from '../services/RunService';
 import { RunTreeProvider } from '../ui/RunTreeProvider';
+import { PortService } from '../services/PortService';
+import { PortTreeProvider } from '../ui/PortTreeProvider';
 
 // Import new abstractions
 import { ConfigurationService } from '../services/ConfigurationService';
@@ -72,6 +74,8 @@ export class ServiceContainer {
 	readonly runTreeProvider: RunTreeProvider;
 	readonly logViewerService: ILogViewerService;
 	readonly rollbackService: IRollbackService;
+	readonly portService: PortService;
+	readonly portTreeProvider: PortTreeProvider;
 
 	private constructor(context: vscode.ExtensionContext) {
 		// Create output channel
@@ -171,6 +175,9 @@ export class ServiceContainer {
 			this.debugTreeProvider
 		);
 
+		this.portService = new PortService();
+		this.portTreeProvider = new PortTreeProvider(this.portService);
+
 		// Create command registry
 		this.commandRegistry = new CommandRegistry(context, this.outputChannel);
 	}
@@ -186,6 +193,7 @@ export class ServiceContainer {
 		vscode.window.registerTreeDataProvider('dotnetHistory', container.historyProvider);
 		vscode.window.registerTreeDataProvider('dotnetRun', container.runTreeProvider);
 		vscode.window.registerTreeDataProvider('dotnetPublish', container.publishTreeProvider);
+		vscode.window.registerTreeDataProvider('dotnetPorts', container.portTreeProvider);
 
 		// Create refresh callback
 		const onRefresh = () => {
@@ -193,6 +201,7 @@ export class ServiceContainer {
 			container.historyProvider.refresh();
 			container.runTreeProvider.refresh();
 			container.publishTreeProvider.refresh();
+			container.portTreeProvider.refresh();
 			ProfileInfoPanel.updateAll();
 		};
 
@@ -621,6 +630,34 @@ export class ServiceContainer {
 					}
 				}
 			)
+		);
+
+		// Register Ports commands
+		context.subscriptions.push(
+			vscode.commands.registerCommand('dotnet-project-toolkit.ports.refresh', () => {
+				container.portTreeProvider.refresh();
+				container.outputChannel.appendLine('[Ports] Refreshed active ports list');
+			}),
+			vscode.commands.registerCommand('dotnet-project-toolkit.ports.kill', async (item: any) => {
+				if (item && item.activePort) {
+					const { port, pid, processName } = item.activePort;
+					const confirm = await vscode.window.showWarningMessage(
+						`Are you sure you want to kill process "${processName}" (PID ${pid}) listening on port ${port}?`,
+						{ modal: true },
+						'Kill Process'
+					);
+
+					if (confirm === 'Kill Process') {
+						try {
+							await container.portService.killPort(pid);
+							vscode.window.showInformationMessage(`Successfully killed process "${processName}" (PID ${pid})`);
+							container.portTreeProvider.refresh();
+						} catch (error: any) {
+							vscode.window.showErrorMessage(`Failed to kill process: ${error.message}`);
+						}
+					}
+				}
+			})
 		);
 
 		container.outputChannel.appendLine('[Container] All services initialized');
