@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ---
 
-## [0.1.1] - 2026-01-20
+## [0.1.0] - 2026-04-20
 
 ### Added
 
@@ -43,11 +43,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ---
 
-## [0.1.0] - 2026-01-14
+## [0.0.1] - 2026-01-14 (Internal Milestone, Not Released)
 
 ### Added
 
-- 🎉 **Initial Release**
+- 🎉 **Internal milestone build**
 - 📦 Multi-view panel structure (Publish, Watch, Debug, History)
 - 🚀 One-click deployment to IIS
 - 📂 Automatic `.pubxml` file detection and parsing
@@ -99,44 +99,33 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 | Version | Date       | Description                                      |
 | ------- | ---------- | ------------------------------------------------ |
-| 0.1.1   | 2026-01-20 | Profile editor, credential management, log viewer |
-| 0.1.0   | 2026-01-14 | Initial release with core deployment features    |
+| 0.1.0   | 2026-01-20 | First public release                             |
+| 0.0.1   | 2026-01-14 | Internal development milestone (not released)    |
 
 ---
 
 ## Migration Guide
 
-### Upgrading from 0.1.0 to 0.1.1
+### First Public Release
 
-**Password Storage:**
+This is the first public release of `.NET Project Toolkit`.
 
-- The default password storage method has changed from `envvar` to `secret`
-- Existing environment variables will still work
-- To migrate to secure storage:
-  1. Edit each profile in the Profile Info Panel
-  2. Re-enter the password
-  3. Save the profile
-  4. Remove the environment variable
+No migration is required.
 
-**Profile Format:**
-
-- New `.pubxml` properties added: `LogPath`, `LaunchSiteAfterPublish`
-- Existing profiles will continue to work
-- Edit profiles to take advantage of new features
 
 ---
 
 ## Breaking Changes
 
-### v0.1.1
+### v0.1.0
 
-- None - fully backward compatible with v0.1.0
+- None.
 
 ---
 
 ## Bug Fixes
 
-### v0.1.1
+### v0.1.0
 
 - Fixed issue where `openBrowserOnDeploy` setting was not persisting
 - Fixed project path resolution causing "Project path not found" errors
@@ -144,9 +133,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 - Fixed XML parser not handling boolean values correctly
 - Fixed profile save not updating the TreeView immediately
 
-### v0.1.0
-
-- Initial release - no bug fixes
+### v0.0.1`r`n`r`n- Internal milestone - not publicly released.
 
 ---
 
@@ -174,3 +161,5 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 ---
 
 **Note**: This extension is under active development. Features and APIs may change between versions.
+
+

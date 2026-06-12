@@ -2,7 +2,7 @@
 	"name": "dotnet-project-toolkit",
 	"displayName": ".NET Project Toolkit",
 	"description": "All-in-one project toolkit for .NET developers - deployment, watch, and debug management",
-	"version": "0.1.1",
+	"version": "0.1.0",
 	"publisher": "alexnguyen03",
 	"repository": {
 		"type": "git",
@@ -34,132 +34,157 @@
 		"commands": [
 			{
 				"command": "dotnet-project-toolkit.refreshHistory",
-				"title": ".NET Project Toolkit: Refresh Deployment History",
+				"title": "Refresh Deployment History",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "dotnet-project-toolkit.clearHistory",
-				"title": ".NET Project Toolkit: Clear All Deployment History",
+				"title": "Clear All Deployment History",
 				"icon": "$(trash)"
 			},
 			{
+				"command": "dotnet-project-toolkit.rollback",
+				"title": "Rollback Deployment",
+				"icon": "$(history)"
+			},
+			{
 				"command": "dotnet-project-toolkit.clearHistoryEntry",
-				"title": ".NET Project Toolkit: Clear History Entry",
+				"title": "Clear History Entry",
 				"icon": "$(close)"
 			},
 			{
 				"command": "dotnet-project-toolkit.refreshProfiles",
-				"title": ".NET Project Toolkit: Refresh Publish Profiles",
+				"title": "Refresh Publish Profiles",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "dotnet-project-toolkit.createPublishProfile",
-				"title": ".NET Project Toolkit: Create Publish Profile",
+				"title": "Create Publish Profile",
 				"icon": "$(add)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deletePublishProfile",
-				"title": ".NET Project Toolkit: Delete Publish Profile",
+				"title": "Delete Publish Profile",
 				"icon": "$(trash)"
 			},
 			{
 				"command": "dotnet-project-toolkit.profileInfo",
-				"title": ".NET Project Toolkit: Profile Info",
+				"title": "Profile Info",
 				"icon": "$(info)"
 			},
 			{
 				"command": "dotnet-project-toolkit.exportPublishProfile",
-				"title": ".NET Project Toolkit: Export Publish Profile",
+				"title": "Export Publish Profile",
 				"icon": "$(export)"
 			},
 			{
 				"command": "dotnet-project-toolkit.importPublishProfile",
-				"title": ".NET Project Toolkit: Import Publish Profile",
+				"title": "Import Publish Profile",
 				"icon": "$(import)"
 			},
 			{
 				"command": "dotnet-project-toolkit.deployProfile",
-				"title": ".NET Project Toolkit: Deploy Profile",
+				"title": "Deploy Profile",
 				"icon": "$(rocket)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.start",
-				"title": ".NET Project Toolkit: Start Watch",
+				"title": "Start Watch",
 				"icon": "$(play)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.stop",
-				"title": ".NET Project Toolkit: Stop Watch",
+				"title": "Stop Watch",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.stopAll",
-				"title": ".NET Project Toolkit: Stop All Watches",
+				"title": "Stop All Watches",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.createGroup",
-				"title": ".NET Project Toolkit: Create Watch Group",
+				"title": "Create Watch Group",
 				"icon": "$(add)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.deleteGroup",
-				"title": ".NET Project Toolkit: Delete Watch Group",
+				"title": "Delete Watch Group",
 				"icon": "$(trash)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.runGroup",
-				"title": ".NET Project Toolkit: Run Watch Group",
+				"title": "Run Watch Group",
 				"icon": "$(play)"
 			},
 			{
 				"command": "dotnet-project-toolkit.watch.stopGroup",
-				"title": ".NET Project Toolkit: Stop Watch Group",
+				"title": "Stop Watch Group",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.start",
-				"title": ".NET Project Toolkit: Start Debugging",
+				"title": "Start Debugging",
 				"icon": "$(debug-start)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.stop",
-				"title": ".NET Project Toolkit: Stop Debugging",
+				"title": "Stop Debugging",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.createGroup",
-				"title": ".NET Project Toolkit: Create Debug Group",
+				"title": "Create Debug Group",
 				"icon": "$(add)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.runGroup",
-				"title": ".NET Project Toolkit: Run Debug Group",
+				"title": "Run Debug Group",
 				"icon": "$(debug-start)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.stopGroup",
-				"title": ".NET Project Toolkit: Stop Debug Group",
+				"title": "Stop Debug Group",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.deleteGroup",
-				"title": ".NET Project Toolkit: Delete Debug Group",
+				"title": "Delete Debug Group",
 				"icon": "$(trash)"
 			},
 			{
 				"command": "dotnet-project-toolkit.debug.stopAll",
-				"title": ".NET Project Toolkit: Stop All Debugging",
+				"title": "Stop All Debugging",
 				"icon": "$(debug-stop)"
 			},
 			{
 				"command": "dotnet-project-toolkit.run.reload",
-				"title": ".NET Project Toolkit: Reload/Restart",
+				"title": "Reload/Restart",
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "dotnet-project-toolkit.project.build",
+				"title": "Build Project",
+				"icon": "$(tools)"
+			},
+			{
+				"command": "dotnet-project-toolkit.project.clean",
+				"title": "Clean Project",
+				"icon": "$(clear-all)"
+			},
+			{
+				"command": "dotnet-project-toolkit.project.rebuild",
+				"title": "Rebuild Project",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "dotnet-project-toolkit.project.restore",
+				"title": "Restore Project",
+				"icon": "$(cloud-download)"
+			},
+			{
 				"command": "dotnet-project-toolkit.testNotification",
-				"title": ".NET Project Toolkit: Test Notification",
+				"title": "Test Notification",
 				"icon": "$(broadcast)"
 			}
 		],
@@ -231,9 +256,14 @@
 			],
 			"view/item/context": [
 				{
+					"command": "dotnet-project-toolkit.rollback",
+					"when": "view == dotnetHistory && viewItem == deployment",
+					"group": "inline@1"
+				},
+				{
 					"command": "dotnet-project-toolkit.clearHistoryEntry",
 					"when": "view == dotnetHistory && viewItem == deployment",
-					"group": "inline"
+					"group": "inline@2"
 				},
 				{
 					"command": "dotnet-project-toolkit.createPublishProfile",
@@ -304,6 +334,26 @@
 					"command": "dotnet-project-toolkit.run.reload",
 					"when": "view == dotnetRun && viewItem == runProjectDebugging",
 					"group": "inline@3"
+				},
+				{
+					"command": "dotnet-project-toolkit.project.build",
+					"when": "view == dotnetRun && (viewItem == runProject || viewItem == runProjectWatching || viewItem == runProjectDebugging)",
+					"group": "dotnetProjectActions@1"
+				},
+				{
+					"command": "dotnet-project-toolkit.project.clean",
+					"when": "view == dotnetRun && (viewItem == runProject || viewItem == runProjectWatching || viewItem == runProjectDebugging)",
+					"group": "dotnetProjectActions@2"
+				},
+				{
+					"command": "dotnet-project-toolkit.project.rebuild",
+					"when": "view == dotnetRun && (viewItem == runProject || viewItem == runProjectWatching || viewItem == runProjectDebugging)",
+					"group": "dotnetProjectActions@3"
+				},
+				{
+					"command": "dotnet-project-toolkit.project.restore",
+					"when": "view == dotnetRun && (viewItem == runProject || viewItem == runProjectWatching || viewItem == runProjectDebugging)",
+					"group": "dotnetProjectActions@4"
 				},
 				{
 					"command": "dotnet-project-toolkit.watch.runGroup",
@@ -502,6 +552,7 @@
 		"pretest": "npm run compile-tests && npm run compile && npm run lint",
 		"check-types": "tsc --noEmit",
 		"lint": "eslint src",
+		"build:vsix": "npm run package && npx vsce package",
 		"test": "vscode-test",
 		"format": "prettier --write \"**/*.{ts,js,json,md,html,css,yml,yaml}\"",
 		"format:check": "prettier --check \"**/*.{ts,js,json,md,html,css,yml,yaml}\""

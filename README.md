@@ -4,7 +4,7 @@ Deploy, watch, and debug .NET projects in one VS Code extension.
 
 > Manage `.pubxml` profiles, deploy to IIS with MSDeploy, inspect IIS logs, and coordinate multi-project run/debug workflows without leaving VS Code.
 
-[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/alexnguyen03/dotnet-project-toolkit)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/alexnguyen03/dotnet-project-toolkit)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 <!-- Optional Marketplace badges (uncomment after publish)
@@ -54,40 +54,46 @@ Deploy, watch, and debug .NET projects in one VS Code extension.
 
 ## Demo
 
-> Add your screenshots/GIFs in `media/` and replace placeholders below.
-
 ### 1) Publish View and Profile Management
 
-![Publish View Demo](media/demo-publish-view.gif)
-
-`TODO:` Replace with real demo showing profile discovery + profile info panel.
+![Publish View Demo](media/demo-publish-view.png)
 
 ### 2) One-Click Deploy + Health Check
 
-![Deploy Demo](media/demo-deploy-healthcheck.gif)
-
-`TODO:` Replace with real demo showing deploy progress and success notification.
+![Deploy Demo](media/demo-deploy-healthcheck.png)
 
 ### 3) IIS Log Viewer (Quick + Full)
 
-![Logs Demo](media/demo-logs-viewer.gif)
-
-`TODO:` Replace with real demo showing quick preview then opening full log file.
+![Logs Demo](media/demo-logs-viewer.png)
 
 ### 4) Run/Watch/Debug Groups
 
-![Run Debug Demo](media/demo-run-debug-groups.gif)
-
-`TODO:` Replace with real demo showing start/stop group and reload action.
-
+![Run Debug Demo](media/demo-run-debug-groups.png)
 ---
 
 ## Quick Start
 
 1. Open a workspace that contains one or more .NET projects.
 2. Open the **.NET Project Toolkit** activity bar view.
-3. In **Publish**, expand a project and click **Deploy** on a profile.
+3. In **Publish**, create new profile, expand a project and click **Deploy** on a profile.
 4. Open **Profile Info** to edit target URL, credentials, log path, and deployment options.
+
+---
+
+## Install from VSIX (No Marketplace Required)
+
+### From CI Artifact (GitHub Actions)
+
+1. Open the latest workflow run in **Actions** for `Build VSIX`.
+2. Download artifact: `dotnet-project-toolkit-vsix`.
+3. In VS Code, run: `Extensions: Install from VSIX...`
+4. Select the downloaded `.vsix` file.
+
+### Install via CLI
+
+```bash
+code --install-extension dotnet-project-toolkit-<version>.vsix
+```
 
 ---
 
@@ -147,6 +153,55 @@ Search `dotnet toolkit` in VS Code Settings.
 
 ---
 
+## Slack Demo Setup
+
+Use this section when you want to quickly demo deployment notifications to Slack.
+
+### 1) Create a Slack Incoming Webhook
+
+1. Open [Slack API: Your Apps](https://api.slack.com/apps) and click **Create New App**.
+2. Choose **From scratch**.
+3. Enter app name (for example: `Dotnet Toolkit Notifier`) and select your workspace.
+4. In app settings sidebar, open **Incoming Webhooks**.
+5. Turn on **Activate Incoming Webhooks**.
+6. Click **Add New Webhook to Workspace**.
+7. Choose the Slack channel you want to receive deployment notifications.
+8. Click **Allow** to authorize.
+9. Copy the generated webhook URL (format: `https://hooks.slack.com/services/...`).
+
+### 2) Configure VS Code settings
+
+Add these settings (Workspace or User):
+
+```json
+{
+  "dotnetToolkit.notificationPlatform": "slack",
+  "dotnetToolkit.slackWebhookUrl": "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+}
+```
+
+### 3) Send a test message
+
+Run command:
+
+- `.NET Project Toolkit: Test Notification`
+
+Expected result:
+
+- VS Code shows success notification.
+- A demo message appears in your configured Slack channel.
+
+![Deploy Demo](media/demo-slack.png)
+
+
+### 4) Demo flow suggestion
+
+1. Trigger `.NET Project Toolkit: Test Notification`.
+2. Show Slack channel receiving the test message.
+3. Run a real deploy and show deployment notification in the same channel.
+
+---
+
 ## Security Notes
 
 - Credentials are stored in OS secure storage by default (`secret`).
@@ -190,6 +245,40 @@ npm run test
 4. Open a PR with clear description and screenshots/logs (if applicable).
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting.
+
+---
+
+## Build and CI/CD for VSIX
+
+### Local VSIX build
+
+```bash
+npm run build:vsix
+```
+
+Output file will be created at repo root, for example:
+
+```bash
+dotnet-project-toolkit-0.1.0.vsix
+```
+
+### CI/CD workflow
+
+- Workflow file: `.github/workflows/build-vsix.yml`
+- Triggers:
+  - `push` to `main` / `dev`
+  - `pull_request` to `main` / `dev`
+  - manual run (`workflow_dispatch`)
+  - tag push `v*`
+- Artifact name: `dotnet-project-toolkit-vsix`
+
+### Update pipeline later (for maintainers)
+
+Typical changes:
+
+1. Update Node version in workflow (`actions/setup-node`).
+2. Add extra quality gates before packaging (for example `npm test`).
+3. Add release publishing step if you want tag builds to attach `.vsix` to GitHub Releases.
 
 ---
 

@@ -7,7 +7,7 @@ export class WatchConfigService {
 	constructor(private readonly context: vscode.ExtensionContext) {}
 
 	public getGroups(): WatchGroup[] {
-		return this.context.globalState.get<WatchGroup[]>(WatchConfigService.KEY_WATCH_GROUPS, []);
+		return this.context.workspaceState.get<WatchGroup[]>(WatchConfigService.KEY_WATCH_GROUPS, []);
 	}
 
 	public async saveGroup(group: WatchGroup): Promise<void> {
@@ -20,12 +20,12 @@ export class WatchConfigService {
 			groups.push(group);
 		}
 
-		await this.context.globalState.update(WatchConfigService.KEY_WATCH_GROUPS, groups);
+		await this.context.workspaceState.update(WatchConfigService.KEY_WATCH_GROUPS, groups);
 	}
 
 	public async deleteGroup(id: string): Promise<void> {
 		const groups = this.getGroups().filter((g) => g.id !== id);
-		await this.context.globalState.update(WatchConfigService.KEY_WATCH_GROUPS, groups);
+		await this.context.workspaceState.update(WatchConfigService.KEY_WATCH_GROUPS, groups);
 	}
 
 	public getGroup(id: string): WatchGroup | undefined {

@@ -69,21 +69,29 @@ export class RunTreeProvider implements vscode.TreeDataProvider<RunTreeItem> {
 		// Watch Groups Container
 		if (element instanceof GroupContainerItem && element.id === 'watch-groups') {
 			const groups = this.watchConfigService.getGroups();
-			if (groups.length === 0) {
+			const structure = await this.projectScanner.scanWorkspace(this.workspaceRoot);
+			const workspaceProjectNames = new Set(structure.projects.map((p) => p.name));
+			const filteredGroups = groups.filter((g) =>
+				g.projects.some((pName) => workspaceProjectNames.has(pName))
+			);
+			if (filteredGroups.length === 0) {
 				return [new InfoItem('No watch groups created')];
 			}
-			const structure = await this.projectScanner.scanWorkspace(this.workspaceRoot);
-			return groups.map((g) => new WatchGroupItem(g, structure.projects, this.runService));
+			return filteredGroups.map((g) => new WatchGroupItem(g, structure.projects, this.runService));
 		}
 
 		// Debug Groups Container
 		if (element instanceof GroupContainerItem && element.id === 'debug-groups') {
 			const groups = this.debugConfigService.getGroups();
-			if (groups.length === 0) {
+			const structure = await this.projectScanner.scanWorkspace(this.workspaceRoot);
+			const workspaceProjectNames = new Set(structure.projects.map((p) => p.name));
+			const filteredGroups = groups.filter((g) =>
+				g.projects.some((pName) => workspaceProjectNames.has(pName))
+			);
+			if (filteredGroups.length === 0) {
 				return [new InfoItem('No debug groups created')];
 			}
-			const structure = await this.projectScanner.scanWorkspace(this.workspaceRoot);
-			return groups.map((g) => new DebugGroupItem(g, structure.projects, this.runService));
+			return filteredGroups.map((g) => new DebugGroupItem(g, structure.projects, this.runService));
 		}
 
 		// All Projects Container
@@ -149,7 +157,19 @@ export class RunProjectItem extends vscode.TreeItem {
 			this.description = `${vscode.workspace.asRelativePath(project.projectDir)} • Debugging`;
 		} else {
 			this.contextValue = 'runProject';
-			this.iconPath = new vscode.ThemeIcon('code');
+			switch (project.projectType) {
+				case 'api':
+					this.iconPath = new vscode.ThemeIcon('circuit-board');
+					break;
+				case 'web':
+					this.iconPath = new vscode.ThemeIcon('browser');
+					break;
+				case 'library':
+					this.iconPath = new vscode.ThemeIcon('library');
+					break;
+				default:
+					this.iconPath = new vscode.ThemeIcon('code');
+			}
 			this.description = vscode.workspace.asRelativePath(project.projectDir);
 		}
 

@@ -8,6 +8,8 @@ import { PublishProfileInfo, DeployEnvironment } from '../models/ProjectModels';
 import { IDeploymentService } from '../services/DeploymentService';
 import { NotificationService } from '../services/NotificationService';
 import { GitService } from '../services/GitService';
+import { IRollbackService } from '../services/RollbackService';
+import { IPasswordStorage } from '../strategies/IPasswordStorage';
 
 /**
  * Deploy Profile Command
@@ -20,7 +22,9 @@ export class DeployProfileCommand implements ICommand {
 		private readonly outputChannel: vscode.OutputChannel,
 		private readonly onRefresh: () => void,
 		private readonly historyManager: HistoryManager,
-		private readonly deploymentService: IDeploymentService
+		private readonly deploymentService: IDeploymentService,
+		private readonly rollbackService: IRollbackService,
+		private readonly passwordStorage: IPasswordStorage
 	) {
 		this.notificationService = new NotificationService(outputChannel);
 	}
@@ -128,7 +132,14 @@ export class DeployProfileCommand implements ICommand {
 			return;
 		}
 
-		// 2. Add history record (in-progress)
+		// 2. Create backup before deployment
+		let backupPath: string | null = null;
+		if (projectPath) {
+			this.outputChannel.appendLine(`[Deploy] Creating backup for automatic rollback if needed...`);
+			backupPath = await this.rollbackService.createBackup(projectPath, profile);
+		}
+
+		// 3. Add history record (in-progress)
 		const startTime = new Date();
 		const historyId = await this.historyManager.addDeployment(
 			{
@@ -137,6 +148,7 @@ export class DeployProfileCommand implements ICommand {
 				environment: environment,
 				status: 'in-progress',
 				startTime: startTime.toISOString(),
+				backupPath: backupPath || undefined,
 			},
 			profile.path
 		);
@@ -252,6 +264,52 @@ export class DeployProfileCommand implements ICommand {
 
 			vscode.window.showErrorMessage(`❌ Deployment failed: ${error.message}`);
 			this.outputChannel.appendLine(`[Error] Deployment failed: ${error.message}`);
+
+			// Automatic Rollback
+			if (backupPath && projectPath) {
+				this.outputChannel.appendLine(`[Rollback] Deployment failed, automatically rolling back...`);
+				vscode.window.showInformationMessage(`Deployment failed. Automatically rolling back ${projectName}...`);
+				
+				try {
+					const passwordKey = this.passwordStorage.generateKey(projectName, profile.fileName);
+					const password = await this.passwordStorage.retrieve(passwordKey);
+					
+					if (password) {
+						const rollbackResult = await this.rollbackService.rollback(
+							projectPath,
+							projectName,
+							profile,
+							password,
+							backupPath
+						);
+						
+						if (rollbackResult.success) {
+							vscode.window.showInformationMessage(`✅ Automatically rolled back ${projectName} after deployment failure.`);
+							
+							// Add a new history record for this rollback
+							await this.historyManager.addDeployment(
+								{
+									profileName: profile.fileName,
+									projectName: projectName,
+									environment: environment,
+									status: 'success',
+									startTime: new Date().toISOString(),
+									endTime: new Date().toISOString(),
+									isRollback: true,
+									rollbackFromId: historyId
+								},
+								''
+							);
+						} else {
+							vscode.window.showErrorMessage(`❌ Automatic rollback failed: ${rollbackResult.errorMessage}`);
+						}
+					} else {
+						this.outputChannel.appendLine(`[Rollback] Could not retrieve password for automatic rollback.`);
+					}
+				} catch (rollbackError: any) {
+					this.outputChannel.appendLine(`[Error] Exception during automatic rollback: ${rollbackError.message}`);
+				}
+			}
 
 			// Send notification for failure
 			const failedRecord = this.historyManager.getRecord(historyId);

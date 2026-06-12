@@ -119,6 +119,60 @@ export class RunService {
 	}
 
 	/**
+	 * Run a dotnet CLI command for a project in a terminal
+	 */
+	private runTerminalCommand(project: ProjectInfo, command: string | string[], actionName: string): void {
+		const terminalName = `${actionName}: ${project.name}`;
+		let terminal = vscode.window.terminals.find((t) => t.name === terminalName);
+
+		if (!terminal) {
+			terminal = vscode.window.createTerminal({
+				name: terminalName,
+				cwd: project.projectDir,
+			});
+		}
+
+		terminal.show();
+		if (Array.isArray(command)) {
+			command.forEach((cmd) => terminal.sendText(cmd));
+		} else {
+			terminal.sendText(command);
+		}
+	}
+
+	/**
+	 * Build project
+	 */
+	public buildProject(project: ProjectInfo): void {
+		this.runTerminalCommand(project, `dotnet build "${project.csprojPath}"`, 'Build');
+	}
+
+	/**
+	 * Clean project
+	 */
+	public cleanProject(project: ProjectInfo): void {
+		this.runTerminalCommand(project, `dotnet clean "${project.csprojPath}"`, 'Clean');
+	}
+
+	/**
+	 * Rebuild project (clean followed by build)
+	 */
+	public rebuildProject(project: ProjectInfo): void {
+		this.runTerminalCommand(
+			project,
+			[`dotnet clean "${project.csprojPath}"`, `dotnet build "${project.csprojPath}"`],
+			'Rebuild'
+		);
+	}
+
+	/**
+	 * Restore project
+	 */
+	public restoreProject(project: ProjectInfo): void {
+		this.runTerminalCommand(project, `dotnet restore "${project.csprojPath}"`, 'Restore');
+	}
+
+	/**
 	 * Stop all running processes
 	 */
 	public async stopAll(): Promise<void> {

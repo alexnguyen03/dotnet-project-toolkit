@@ -14,6 +14,7 @@ import { TestNotificationCommand } from '../commands/TestNotificationCommand';
 import { ProfileExportCommand } from '../commands/ProfileExportCommand';
 import { ProfileImportCommand } from '../commands/ProfileImportCommand';
 import { RefreshCommand } from '../commands/RefreshCommand';
+import { RollbackCommand } from '../commands/RollbackCommand';
 import { UnifiedTreeProvider } from '../ui/UnifiedTreeProvider';
 import { HistoryManager } from '../services/HistoryManager';
 import { HistoryTreeProvider } from '../ui/history/HistoryTreeProvider';
@@ -39,6 +40,7 @@ import { ProfileRepository } from '../repositories/ProfileRepository';
 import { EnvironmentDetector } from '../detectors/EnvironmentDetector';
 import { WebConfigModifier, IWebConfigModifier } from '../services/WebConfigModifier';
 import { LogViewerService, ILogViewerService } from '../services/LogViewerService';
+import { RollbackService, IRollbackService } from '../services/RollbackService';
 import { withTimestampedAppendLine } from '../utils/OutputChannelTimestamp';
 
 /**
@@ -69,6 +71,7 @@ export class ServiceContainer {
 	readonly runService: RunService;
 	readonly runTreeProvider: RunTreeProvider;
 	readonly logViewerService: ILogViewerService;
+	readonly rollbackService: IRollbackService;
 
 	private constructor(context: vscode.ExtensionContext) {
 		// Create output channel
@@ -123,6 +126,10 @@ export class ServiceContainer {
 			this.outputChannel,
 			this.passwordStorage,
 			webConfigModifier
+		);
+		this.rollbackService = new RollbackService(
+			this.outputChannel,
+			this.passwordStorage
 		);
 		this.historyManager = new HistoryManager(context);
 		this.projectScanner = new ProjectScanner();
@@ -196,7 +203,9 @@ export class ServiceContainer {
 				container.outputChannel,
 				onRefresh,
 				container.historyManager,
-				container.deploymentService
+				container.deploymentService,
+				container.rollbackService,
+				container.passwordStorage
 			),
 			new CreateProfileCommand(container.outputChannel, container.profileService, onRefresh),
 			new DeleteProfileCommand(
@@ -217,6 +226,13 @@ export class ServiceContainer {
 				container.profileService,
 				container.passwordStorage,
 				container.historyManager,
+				onRefresh
+			),
+			new RollbackCommand(
+				container.outputChannel,
+				container.historyManager,
+				container.rollbackService,
+				container.passwordStorage,
 				onRefresh
 			),
 			new TestNotificationCommand(container.outputChannel),
@@ -544,6 +560,42 @@ export class ServiceContainer {
 					if (item && item.project) {
 						await container.runService.reload(item.project);
 						container.runTreeProvider.refresh();
+					}
+				}
+			)
+		);
+
+		// Register Build/Clean/Rebuild/Restore commands
+		context.subscriptions.push(
+			vscode.commands.registerCommand(
+				'dotnet-project-toolkit.project.build',
+				async (item: any) => {
+					if (item && item.project) {
+						container.runService.buildProject(item.project);
+					}
+				}
+			),
+			vscode.commands.registerCommand(
+				'dotnet-project-toolkit.project.clean',
+				async (item: any) => {
+					if (item && item.project) {
+						container.runService.cleanProject(item.project);
+					}
+				}
+			),
+			vscode.commands.registerCommand(
+				'dotnet-project-toolkit.project.rebuild',
+				async (item: any) => {
+					if (item && item.project) {
+						container.runService.rebuildProject(item.project);
+					}
+				}
+			),
+			vscode.commands.registerCommand(
+				'dotnet-project-toolkit.project.restore',
+				async (item: any) => {
+					if (item && item.project) {
+						container.runService.restoreProject(item.project);
 					}
 				}
 			)

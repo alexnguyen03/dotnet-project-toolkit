@@ -13,7 +13,7 @@ export class DebugConfigService {
 	 * Get all debug groups
 	 */
 	getGroups(): DebugGroup[] {
-		return this.context.globalState.get<DebugGroup[]>(DebugConfigService.STORAGE_KEY, []);
+		return this.context.workspaceState.get<DebugGroup[]>(DebugConfigService.STORAGE_KEY, []);
 	}
 
 	/**
@@ -28,7 +28,7 @@ export class DebugConfigService {
 		}
 
 		groups.push(group);
-		await this.context.globalState.update(DebugConfigService.STORAGE_KEY, groups);
+		await this.context.workspaceState.update(DebugConfigService.STORAGE_KEY, groups);
 	}
 
 	/**
@@ -43,7 +43,7 @@ export class DebugConfigService {
 		}
 
 		groups[index] = updatedGroup;
-		await this.context.globalState.update(DebugConfigService.STORAGE_KEY, groups);
+		await this.context.workspaceState.update(DebugConfigService.STORAGE_KEY, groups);
 	}
 
 	/**
@@ -57,13 +57,13 @@ export class DebugConfigService {
 			throw new Error(`Debug group "${name}" not found`);
 		}
 
-		await this.context.globalState.update(DebugConfigService.STORAGE_KEY, filtered);
+		await this.context.workspaceState.update(DebugConfigService.STORAGE_KEY, filtered);
 	}
 
 	/**
 	 * Clear all debug groups
 	 */
 	async clearAll(): Promise<void> {
-		await this.context.globalState.update(DebugConfigService.STORAGE_KEY, []);
+		await this.context.workspaceState.update(DebugConfigService.STORAGE_KEY, []);
 	}
 }

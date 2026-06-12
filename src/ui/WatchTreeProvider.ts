@@ -50,17 +50,15 @@ export class WatchTreeProvider implements vscode.TreeDataProvider<WatchTreeItem>
 		if (element instanceof GroupContainerItem) {
 			if (element.id === 'watch-groups') {
 				const groups = this.configService.getGroups();
-				if (groups.length === 0) {
+				const structure = await this.projectScanner.scanWorkspace(this.workspaceRoot);
+				const workspaceProjectNames = new Set(structure.projects.map((p) => p.name));
+				const filteredGroups = groups.filter((g) =>
+					g.projects.some((pName) => workspaceProjectNames.has(pName))
+				);
+				if (filteredGroups.length === 0) {
 					return [new InfoItem('No watch groups created')];
 				}
-				// Need scanning to check running status against all projects?
-				// Actually WatchService.isGroupRunning needs allProjects ONLY to look up CSPROJ path from name.
-				// If I can make isGroupRunning work with just names?
-				// WatchService uses runningWatches Map<string, RunningWatch>. Key is csprojPath.
-				// Group stores names.
-				// So I definitely need project structure to map Name -> Path.
-				const structure = await this.projectScanner.scanWorkspace(this.workspaceRoot);
-				return groups.map(
+				return filteredGroups.map(
 					(g) =>
 						new WatchGroupItem(
 							g,
@@ -144,9 +142,23 @@ export class ProjectItem extends vscode.TreeItem {
 	) {
 		super(project.name, vscode.TreeItemCollapsibleState.None);
 		this.contextValue = isRunning ? 'watchProjectRunning' : 'watchProject';
-		this.iconPath = isRunning
-			? new vscode.ThemeIcon('sync~spin')
-			: new vscode.ThemeIcon('code');
+		if (isRunning) {
+			this.iconPath = new vscode.ThemeIcon('sync~spin');
+		} else {
+			switch (project.projectType) {
+				case 'api':
+					this.iconPath = new vscode.ThemeIcon('circuit-board');
+					break;
+				case 'web':
+					this.iconPath = new vscode.ThemeIcon('browser');
+					break;
+				case 'library':
+					this.iconPath = new vscode.ThemeIcon('library');
+					break;
+				default:
+					this.iconPath = new vscode.ThemeIcon('code');
+			}
+		}
 		this.description = vscode.workspace.asRelativePath(project.projectDir);
 	}
 }
