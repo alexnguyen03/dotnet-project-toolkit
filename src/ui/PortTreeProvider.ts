@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { PortService, ActivePort } from '../services/PortService';
+import { ProjectScanner } from '../utils/ProjectScanner';
 
 export type PortTreeItem = PortItem | InfoItem;
 
@@ -9,7 +10,11 @@ export class PortTreeProvider implements vscode.TreeDataProvider<PortTreeItem> {
 	readonly onDidChangeTreeData: vscode.Event<PortTreeItem | undefined | null | void> =
 		this._onDidChangeTreeData.event;
 
-	constructor(private readonly portService: PortService) {}
+	constructor(
+		private readonly portService: PortService,
+		private readonly projectScanner: ProjectScanner,
+		private readonly workspaceRoot: string
+	) {}
 
 	refresh(): void {
 		this._onDidChangeTreeData.fire();
@@ -25,9 +30,15 @@ export class PortTreeProvider implements vscode.TreeDataProvider<PortTreeItem> {
 		}
 
 		try {
-			const activePorts = await this.portService.getActivePorts();
+			let projectNames: string[] = [];
+			if (this.workspaceRoot) {
+				const structure = await this.projectScanner.scanWorkspace(this.workspaceRoot);
+				projectNames = structure.projects.map((p) => p.name);
+			}
+
+			const activePorts = await this.portService.getActivePorts(projectNames);
 			if (activePorts.length === 0) {
-				return [new InfoItem('No active local ports found')];
+				return [new InfoItem('No active local .NET ports found')];
 			}
 			return activePorts.map((ap) => new PortItem(ap));
 		} catch (error: any) {
@@ -38,7 +49,10 @@ export class PortTreeProvider implements vscode.TreeDataProvider<PortTreeItem> {
 
 export class PortItem extends vscode.TreeItem {
 	constructor(public readonly activePort: ActivePort) {
-		super(`Port: ${activePort.port} (${activePort.processName})`, vscode.TreeItemCollapsibleState.None);
+		super(
+			`Port: ${activePort.port} (${activePort.processName})`,
+			vscode.TreeItemCollapsibleState.None
+		);
 		this.description = `PID: ${activePort.pid}`;
 		this.contextValue = 'activePort';
 		this.iconPath = new vscode.ThemeIcon('plug');

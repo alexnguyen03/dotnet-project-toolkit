@@ -6,7 +6,7 @@ import { DeploymentRecord } from '../models/DeploymentRecord';
 export class TestNotificationCommand implements ICommand {
 	readonly id = 'dotnet-project-toolkit.testNotification';
 
-	constructor(private readonly outputChannel: vscode.OutputChannel) { }
+	constructor(private readonly outputChannel: vscode.OutputChannel) {}
 
 	async execute(): Promise<void> {
 		const config = vscode.workspace.getConfiguration('dotnetToolkit');

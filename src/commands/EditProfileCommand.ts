@@ -104,7 +104,9 @@ export class EditProfileCommand extends BaseCommand {
 			],
 			{ placeHolder: `Current: ${currentEnv.toUpperCase()}` }
 		);
-		if (!env) {return undefined;}
+		if (!env) {
+			return undefined;
+		}
 
 		// Step 3: Publish URL
 		const publishUrl = await vscode.window.showInputBox({
@@ -112,7 +114,9 @@ export class EditProfileCommand extends BaseCommand {
 			value: existing.publishUrl || '',
 			validateInput: (v) => (!v?.trim() ? 'Required' : null),
 		});
-		if (!publishUrl) {return undefined;}
+		if (!publishUrl) {
+			return undefined;
+		}
 
 		// Step 4: Site name
 		const siteName = await vscode.window.showInputBox({
@@ -120,7 +124,9 @@ export class EditProfileCommand extends BaseCommand {
 			placeHolder: 'MY_APP_API_UAT',
 			validateInput: (v) => (!v?.trim() ? 'Required' : null),
 		});
-		if (!siteName) {return undefined;}
+		if (!siteName) {
+			return undefined;
+		}
 
 		// Step 5: Site URL (optional)
 		const siteUrl = await vscode.window.showInputBox({
@@ -134,7 +140,9 @@ export class EditProfileCommand extends BaseCommand {
 			placeHolder: 'namnh',
 			validateInput: (v) => (!v?.trim() ? 'Required' : null),
 		});
-		if (!username) {return undefined;}
+		if (!username) {
+			return undefined;
+		}
 
 		// Step 7: Password
 		const password = await vscode.window.showInputBox({
@@ -155,7 +163,9 @@ export class EditProfileCommand extends BaseCommand {
 				['Keep existing password', 'Cancel'],
 				{ placeHolder: 'No password entered' }
 			);
-			if (keepExisting !== 'Keep existing password') {return undefined;}
+			if (keepExisting !== 'Keep existing password') {
+				return undefined;
+			}
 		}
 
 		return {

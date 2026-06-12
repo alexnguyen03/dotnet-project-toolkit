@@ -104,7 +104,9 @@ export class RunService {
 		if (currentState === 'watching') {
 			const success = this.watchService.restartWatch(project.csprojPath);
 			if (success) {
-				vscode.window.showInformationMessage(`Restarted watch (Ctrl+R) for ${project.name}`);
+				vscode.window.showInformationMessage(
+					`Restarted watch (Ctrl+R) for ${project.name}`
+				);
 			} else {
 				await this.watchService.runWatch(project);
 				vscode.window.showInformationMessage(`Started watch for ${project.name}`);
@@ -120,7 +122,11 @@ export class RunService {
 	/**
 	 * Run a dotnet CLI command for a project in a terminal
 	 */
-	private runTerminalCommand(project: ProjectInfo, command: string | string[], actionName: string): void {
+	private runTerminalCommand(
+		project: ProjectInfo,
+		command: string | string[],
+		actionName: string
+	): void {
 		const terminalName = `${actionName}: ${project.name}`;
 		let terminal = vscode.window.terminals.find((t) => t.name === terminalName);
 

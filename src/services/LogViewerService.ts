@@ -64,7 +64,9 @@ export class LogViewerService implements ILogViewerService {
 				});
 
 				this.log(`Opened log file: ${logFilePath}`);
-				vscode.window.showInformationMessage(`Log file opened: ${path.basename(logFilePath)}`);
+				vscode.window.showInformationMessage(
+					`Log file opened: ${path.basename(logFilePath)}`
+				);
 			} else {
 				this.log('No log files found.');
 				vscode.window.showWarningMessage('No logs found on the server.');
@@ -113,7 +115,9 @@ export class LogViewerService implements ILogViewerService {
 				this.outputChannel.appendLine('');
 				this.outputChannel.appendLine('='.repeat(80));
 				this.outputChannel.appendLine(`Full log file: ${logFilePath}`);
-				this.outputChannel.appendLine('Tip: Click the file path above to open the complete log file');
+				this.outputChannel.appendLine(
+					'Tip: Click the file path above to open the complete log file'
+				);
 				this.outputChannel.appendLine('='.repeat(80));
 
 				this.log('Quick log preview displayed');

@@ -346,7 +346,10 @@ export class ProfileInfoPanel {
 					const normalizedOldPath = path.normalize(previousProfilePath);
 					const normalizedNewPath = path.normalize(profilePath);
 
-					if (normalizedOldPath !== normalizedNewPath && fs.existsSync(previousProfilePath)) {
+					if (
+						normalizedOldPath !== normalizedNewPath &&
+						fs.existsSync(previousProfilePath)
+					) {
 						await fs.promises.unlink(previousProfilePath);
 						this.outputChannel.appendLine(
 							`[ProfileInfo] Removed old profile file: ${previousProfilePath}`
@@ -362,8 +365,12 @@ export class ProfileInfoPanel {
 						);
 					}
 
-					if (data.password === 'KEEP_EXISTING' && previousPasswordKey !== newPasswordKey) {
-						const existingPassword = await this.passwordStorage.retrieve(previousPasswordKey);
+					if (
+						data.password === 'KEEP_EXISTING' &&
+						previousPasswordKey !== newPasswordKey
+					) {
+						const existingPassword =
+							await this.passwordStorage.retrieve(previousPasswordKey);
 						if (existingPassword) {
 							await this.passwordStorage.store(newPasswordKey, existingPassword);
 						}
@@ -476,7 +483,9 @@ export class ProfileInfoPanel {
 				return `v${packageJson.version}`;
 			}
 		} catch (error) {
-			this.outputChannel.appendLine(`[ProfileInfo] Failed to read extension version: ${error}`);
+			this.outputChannel.appendLine(
+				`[ProfileInfo] Failed to read extension version: ${error}`
+			);
 		}
 
 		return 'v0.0.0';
@@ -608,7 +617,6 @@ export class ProfileInfoPanel {
 		const latest = allHistory.find((h) => h.profileName === profileName);
 		return latest?.status === 'in-progress';
 	}
-
 
 	private async handleCloneProfile(data: any): Promise<void> {
 		const targetEnv = data.targetEnvironment as DeployEnvironment;
@@ -761,7 +769,9 @@ export class ProfileInfoPanel {
 		this.panel.dispose();
 		while (this.disposables.length) {
 			const d = this.disposables.pop();
-			if (d) {d.dispose();}
+			if (d) {
+				d.dispose();
+			}
 		}
 	}
 }

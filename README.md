@@ -34,8 +34,8 @@ Deploy, watch, and debug .NET projects in one VS Code extension.
 - Optional post-deploy health check with retry.
 - Optional remote `web.config` stdout logging update.
 - IIS log viewer:
-  - Quick preview in output panel.
-  - Open full log file in editor.
+    - Quick preview in output panel.
+    - Open full log file in editor.
 - Slack deployment notifications.
 
 ### Run, Watch, Debug
@@ -68,8 +68,7 @@ Deploy, watch, and debug .NET projects in one VS Code extension.
 
 ### 4) Run/Watch/Debug Groups
 
-![Run Debug Demo](media/demo-run-debug-groups.png)
----
+## ![Run Debug Demo](media/demo-run-debug-groups.png)
 
 ## Quick Start
 
@@ -140,16 +139,16 @@ code --install-extension dotnet-project-toolkit-<version>.vsix
 
 Search `dotnet toolkit` in VS Code Settings.
 
-| Setting | Default | Description |
-| :-- | :-- | :-- |
-| `dotnetToolkit.passwordStorage` | `secret` | `secret` (encrypted OS storage) or `envvar` (environment variable storage). |
-| `dotnetToolkit.openBrowserOnDeploy` | `true` | Open browser after successful deployment. |
-| `dotnetToolkit.enableHealthCheck` | `true` | Run post-deploy health check. |
-| `dotnetToolkit.healthCheckTimeout` | `10000` | Health-check timeout (ms). |
-| `dotnetToolkit.healthCheckRetryCount` | `3` | Number of health-check retries. |
-| `dotnetToolkit.notificationPlatform` | `none` | Notification platform (`none` or `slack`). |
-| `dotnetToolkit.slackWebhookUrl` | `""` | Slack incoming webhook URL. |
-| `dotnetWorkspace.dotnetPath` | `dotnet` | Path to .NET CLI executable. |
+| Setting                               | Default  | Description                                                                 |
+| :------------------------------------ | :------- | :-------------------------------------------------------------------------- |
+| `dotnetToolkit.passwordStorage`       | `secret` | `secret` (encrypted OS storage) or `envvar` (environment variable storage). |
+| `dotnetToolkit.openBrowserOnDeploy`   | `true`   | Open browser after successful deployment.                                   |
+| `dotnetToolkit.enableHealthCheck`     | `true`   | Run post-deploy health check.                                               |
+| `dotnetToolkit.healthCheckTimeout`    | `10000`  | Health-check timeout (ms).                                                  |
+| `dotnetToolkit.healthCheckRetryCount` | `3`      | Number of health-check retries.                                             |
+| `dotnetToolkit.notificationPlatform`  | `none`   | Notification platform (`none` or `slack`).                                  |
+| `dotnetToolkit.slackWebhookUrl`       | `""`     | Slack incoming webhook URL.                                                 |
+| `dotnetWorkspace.dotnetPath`          | `dotnet` | Path to .NET CLI executable.                                                |
 
 ---
 
@@ -175,8 +174,8 @@ Add these settings (Workspace or User):
 
 ```json
 {
-  "dotnetToolkit.notificationPlatform": "slack",
-  "dotnetToolkit.slackWebhookUrl": "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+	"dotnetToolkit.notificationPlatform": "slack",
+	"dotnetToolkit.slackWebhookUrl": "https://hooks.slack.com/services/XXX/YYY/ZZZ"
 }
 ```
 
@@ -192,7 +191,6 @@ Expected result:
 - A demo message appears in your configured Slack channel.
 
 ![Deploy Demo](media/demo-slack.png)
-
 
 ### 4) Demo flow suggestion
 
@@ -266,10 +264,10 @@ dotnet-project-toolkit-0.1.0.vsix
 
 - Workflow file: `.github/workflows/build-vsix.yml`
 - Triggers:
-  - `push` to `main` / `dev`
-  - `pull_request` to `main` / `dev`
-  - manual run (`workflow_dispatch`)
-  - tag push `v*`
+    - `push` to `main` / `dev`
+    - `pull_request` to `main` / `dev`
+    - manual run (`workflow_dispatch`)
+    - tag push `v*`
 - Artifact name: `dotnet-project-toolkit-vsix`
 
 ### Update pipeline later (for maintainers)

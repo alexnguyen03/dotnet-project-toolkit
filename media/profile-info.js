@@ -179,7 +179,15 @@ function applyMinimalSectionSeparators() {
 }
 
 function setPlaceholders(placeholders) {
-	['profileName', 'publishUrl', 'linkedBranch', 'siteName', 'siteUrl', 'username', 'password'].forEach((id) => {
+	[
+		'profileName',
+		'publishUrl',
+		'linkedBranch',
+		'siteName',
+		'siteUrl',
+		'username',
+		'password',
+	].forEach((id) => {
 		const el = byId(id);
 		if (el && placeholders[id]) {
 			el.placeholder = placeholders[id];
@@ -345,7 +353,10 @@ function showErrors(errors) {
 		return;
 	}
 
-	errorBox.innerHTML = '<strong>Please fix the following:</strong><ul>' + errors.map((e) => `<li>${e}</li>`).join('') + '</ul>';
+	errorBox.innerHTML =
+		'<strong>Please fix the following:</strong><ul>' +
+		errors.map((e) => `<li>${e}</li>`).join('') +
+		'</ul>';
 	errorBox.style.display = 'block';
 }
 
@@ -362,8 +373,10 @@ function showNotification(message, type) {
 
 	errorBox.innerHTML = `<strong>${message}</strong>`;
 	errorBox.style.display = 'block';
-	errorBox.style.borderColor = 'var(--vscode-inputValidation-infoBorder, var(--vscode-textLink-foreground))';
-	errorBox.style.background = 'var(--vscode-inputValidation-infoBackground, var(--vscode-editorWidget-background))';
+	errorBox.style.borderColor =
+		'var(--vscode-inputValidation-infoBorder, var(--vscode-textLink-foreground))';
+	errorBox.style.background =
+		'var(--vscode-inputValidation-infoBackground, var(--vscode-editorWidget-background))';
 
 	window.setTimeout(() => {
 		errorBox.style.display = 'none';

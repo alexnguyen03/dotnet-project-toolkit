@@ -6,7 +6,7 @@ on:
     branches:
       - main
     tags:
-      - "v*"
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -38,5 +38,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dotnet-project-toolkit-vsix
-          path: "*.vsix"
+          path: '*.vsix'
           if-no-files-found: error

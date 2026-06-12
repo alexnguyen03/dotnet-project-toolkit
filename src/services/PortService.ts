@@ -13,16 +13,27 @@ export interface ActivePort {
 }
 
 export class PortService {
-	public async getActivePorts(): Promise<ActivePort[]> {
+	public async getActivePorts(workspaceProjectNames?: string[]): Promise<ActivePort[]> {
+		const projectSet = new Set((workspaceProjectNames || []).map((name) => name.toLowerCase()));
 		const platform = os.platform();
 		if (platform === 'win32') {
-			return this.getWindowsPorts();
+			return this.getWindowsPorts(projectSet);
 		} else {
-			return this.getUnixPorts();
+			return this.getUnixPorts(projectSet);
 		}
 	}
 
-	private async getWindowsPorts(): Promise<ActivePort[]> {
+	private isNetOrProjectProcess(processName: string, projectSet: Set<string>): boolean {
+		const cleanName = processName.replace(/\.exe$/i, '').toLowerCase();
+		return (
+			cleanName === 'dotnet' ||
+			cleanName === 'iisexpress' ||
+			cleanName === 'w3wp' ||
+			projectSet.has(cleanName)
+		);
+	}
+
+	private async getWindowsPorts(projectSet: Set<string>): Promise<ActivePort[]> {
 		const pidMap = new Map<number, string>();
 		try {
 			const { stdout: tasklistOut } = await exec('tasklist /nh /fo csv');
@@ -69,15 +80,17 @@ export class PortService {
 					}
 
 					const processName = pidMap.get(pid) || 'Unknown';
-					
-					if (!activePorts.some(ap => ap.port === port && ap.pid === pid)) {
-						activePorts.push({
-							port,
-							pid,
-							processName,
-							protocol: 'TCP',
-							address: localAddress
-						});
+
+					if (this.isNetOrProjectProcess(processName, projectSet)) {
+						if (!activePorts.some((ap) => ap.port === port && ap.pid === pid)) {
+							activePorts.push({
+								port,
+								pid,
+								processName,
+								protocol: 'TCP',
+								address: localAddress,
+							});
+						}
 					}
 				}
 			}
@@ -88,7 +101,7 @@ export class PortService {
 		return activePorts.sort((a, b) => a.port - b.port);
 	}
 
-	private async getUnixPorts(): Promise<ActivePort[]> {
+	private async getUnixPorts(projectSet: Set<string>): Promise<ActivePort[]> {
 		const activePorts: ActivePort[] = [];
 		try {
 			const { stdout } = await exec('lsof -iTCP -sTCP:LISTEN -P -n');
@@ -114,14 +127,16 @@ export class PortService {
 						continue;
 					}
 
-					if (!activePorts.some(ap => ap.port === port && ap.pid === pid)) {
-						activePorts.push({
-							port,
-							pid,
-							processName,
-							protocol: 'TCP',
-							address: localAddress
-						});
+					if (this.isNetOrProjectProcess(processName, projectSet)) {
+						if (!activePorts.some((ap) => ap.port === port && ap.pid === pid)) {
+							activePorts.push({
+								port,
+								pid,
+								processName,
+								protocol: 'TCP',
+								address: localAddress,
+							});
+						}
 					}
 				}
 			}

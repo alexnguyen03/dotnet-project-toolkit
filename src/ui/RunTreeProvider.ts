@@ -77,7 +77,9 @@ export class RunTreeProvider implements vscode.TreeDataProvider<RunTreeItem> {
 			if (filteredGroups.length === 0) {
 				return [new InfoItem('No watch groups created')];
 			}
-			return filteredGroups.map((g) => new WatchGroupItem(g, structure.projects, this.runService));
+			return filteredGroups.map(
+				(g) => new WatchGroupItem(g, structure.projects, this.runService)
+			);
 		}
 
 		// Debug Groups Container
@@ -91,7 +93,9 @@ export class RunTreeProvider implements vscode.TreeDataProvider<RunTreeItem> {
 			if (filteredGroups.length === 0) {
 				return [new InfoItem('No debug groups created')];
 			}
-			return filteredGroups.map((g) => new DebugGroupItem(g, structure.projects, this.runService));
+			return filteredGroups.map(
+				(g) => new DebugGroupItem(g, structure.projects, this.runService)
+			);
 		}
 
 		// All Projects Container

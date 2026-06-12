@@ -13,10 +13,7 @@ import { ProcessRunResult, runProcess } from '../utils/ProcessRunner';
  */
 export class EnvVarPasswordStorage extends BasePasswordStorage {
 	readonly type = 'envvar' as const;
-	private readonly processRunner: (
-		command: string,
-		args: string[]
-	) => Promise<ProcessRunResult>;
+	private readonly processRunner: (command: string, args: string[]) => Promise<ProcessRunResult>;
 	private readonly platformResolver: () => NodeJS.Platform;
 
 	constructor(
@@ -41,11 +38,14 @@ export class EnvVarPasswordStorage extends BasePasswordStorage {
 			this.log('Error: Key and value are required');
 			return false;
 		}
-		this.log('WARNING: EnvVar storage is less secure. Passwords are visible to local processes.');
+		this.log(
+			'WARNING: EnvVar storage is less secure. Passwords are visible to local processes.'
+		);
 		try {
-			const stored = this.platformResolver() === 'win32'
-				? await this.storeWindows(key, value)
-				: await this.storeUnix(key, value);
+			const stored =
+				this.platformResolver() === 'win32'
+					? await this.storeWindows(key, value)
+					: await this.storeUnix(key, value);
 
 			if (stored) {
 				// Keep current extension process in sync immediately.

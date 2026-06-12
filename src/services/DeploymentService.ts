@@ -122,7 +122,9 @@ export class DeploymentService implements IDeploymentService {
 				let healthCheckResult: DeploymentResult['healthCheckResult'];
 				if (profileInfo.siteUrl) {
 					onProgress?.('Running health check...', 95);
-					this.outputChannel.appendLine(`[HealthCheck] Checking ${profileInfo.siteUrl}...`);
+					this.outputChannel.appendLine(
+						`[HealthCheck] Checking ${profileInfo.siteUrl}...`
+					);
 
 					const config = vscode.workspace.getConfiguration('dotnetToolkit');
 					const enableHealthCheck = config.get<boolean>('enableHealthCheck', true);
@@ -147,12 +149,17 @@ export class DeploymentService implements IDeploymentService {
 							);
 						}
 					} else {
-						this.outputChannel.appendLine('[HealthCheck] Skipped (disabled in settings)');
+						this.outputChannel.appendLine(
+							'[HealthCheck] Skipped (disabled in settings)'
+						);
 						healthCheckResult = { success: false, error: 'Disabled' };
 					}
 				}
 
-				onProgress?.(`${projectName} (${profileInfo.fileName}) deployed successfully!`, 100);
+				onProgress?.(
+					`${projectName} (${profileInfo.fileName}) deployed successfully!`,
+					100
+				);
 				return {
 					success: true,
 					output: finalResult.output,
@@ -180,7 +187,10 @@ export class DeploymentService implements IDeploymentService {
 		}
 	}
 
-	private async getPassword(projectName: string, profileName: string): Promise<string | undefined> {
+	private async getPassword(
+		projectName: string,
+		profileName: string
+	): Promise<string | undefined> {
 		const key = this.passwordStorage.generateKey(projectName, profileName);
 		return await this.passwordStorage.retrieve(key);
 	}

@@ -159,8 +159,12 @@ export class ProfileService implements IProfileService {
 					openBrowserOnDeploy = val;
 				} else if (typeof val === 'string') {
 					const lower = val.toLowerCase();
-					if (lower === 'true') {openBrowserOnDeploy = true;}
-					if (lower === 'false') {openBrowserOnDeploy = false;}
+					if (lower === 'true') {
+						openBrowserOnDeploy = true;
+					}
+					if (lower === 'false') {
+						openBrowserOnDeploy = false;
+					}
 				}
 			} else {
 				this.log(`[Parse] ${fileName}: LaunchSiteAfterPublish is missing/undefined`);
@@ -174,8 +178,12 @@ export class ProfileService implements IProfileService {
 					enableStdoutLog = val;
 				} else if (typeof val === 'string') {
 					const lower = val.toLowerCase();
-					if (lower === 'true') {enableStdoutLog = true;}
-					if (lower === 'false') {enableStdoutLog = false;}
+					if (lower === 'true') {
+						enableStdoutLog = true;
+					}
+					if (lower === 'false') {
+						enableStdoutLog = false;
+					}
 				}
 			}
 

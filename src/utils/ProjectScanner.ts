@@ -106,7 +106,9 @@ export class ProjectScanner {
 			const parsed = parser.parse(content);
 			const project = parsed?.Project;
 
-			if (!project) {return undefined;}
+			if (!project) {
+				return undefined;
+			}
 
 			// Look for PropertyGroup with TargetFramework or TargetFrameworks
 			const propertyGroups = Array.isArray(project.PropertyGroup)
@@ -114,7 +116,9 @@ export class ProjectScanner {
 				: [project.PropertyGroup];
 
 			for (const group of propertyGroups) {
-				if (!group) {continue;}
+				if (!group) {
+					continue;
+				}
 
 				// Single target framework
 				if (group.TargetFramework) {

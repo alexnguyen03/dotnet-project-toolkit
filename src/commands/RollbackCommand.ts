@@ -48,7 +48,10 @@ export class RollbackCommand implements ICommand {
 		}
 
 		// Retrieve password
-		const passwordKey = this.passwordStorage.generateKey(record.projectName, record.profileName);
+		const passwordKey = this.passwordStorage.generateKey(
+			record.projectName,
+			record.profileName
+		);
 		const password = await this.passwordStorage.retrieve(passwordKey);
 
 		if (!password) {
@@ -62,20 +65,24 @@ export class RollbackCommand implements ICommand {
 		this.outputChannel.appendLine(`[Rollback] Requested manual rollback to: ${record.id}`);
 		this.outputChannel.appendLine(`[Rollback] Backup path: ${record.backupPath}`);
 
-		// Get project path. We might not have the projectPath in the record natively, 
+		// Get project path. We might not have the projectPath in the record natively,
 		// but we can try to find it by scanning the workspace or relying on a convention.
 		// Wait, RollbackService.rollback requires projectPath.
 		// Where can we get projectPath? We can try to use a workspace scan, or require the user to have a project selected,
 		// but HistoryTreeItem just has a record. The profile path might be available.
 		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
-		
+
 		// Attempt to guess projectPath by projectName
 		// We can do a quick search in workspaceRoot for [projectName].csproj
 		// Or we can modify HistoryManager to store projectPath.
 		// For now, let's just construct it if possible, or assume it's in the root
-		const expectedProjectPath = path.join(workspaceRoot, record.projectName, `${record.projectName}.csproj`);
+		const expectedProjectPath = path.join(
+			workspaceRoot,
+			record.projectName,
+			`${record.projectName}.csproj`
+		);
 		const fallbackProjectPath = path.join(workspaceRoot, `${record.projectName}.csproj`);
-		
+
 		let projectPath = '';
 		const fs = require('fs');
 		if (fs.existsSync(expectedProjectPath)) {
@@ -111,7 +118,7 @@ export class RollbackCommand implements ICommand {
 					path: '',
 					isProduction: record.environment?.toLowerCase() === 'production',
 				};
-				
+
 				const result = await this.rollbackService.rollback(
 					projectPath,
 					record.projectName,
@@ -121,8 +128,10 @@ export class RollbackCommand implements ICommand {
 				);
 
 				if (result.success) {
-					vscode.window.showInformationMessage(`✅ Successfully rolled back ${record.projectName}`);
-					
+					vscode.window.showInformationMessage(
+						`✅ Successfully rolled back ${record.projectName}`
+					);
+
 					// Add a new history record for this rollback
 					await this.historyManager.addDeployment(
 						{
@@ -133,14 +142,14 @@ export class RollbackCommand implements ICommand {
 							startTime: new Date().toISOString(),
 							endTime: new Date().toISOString(),
 							isRollback: true,
-							rollbackFromId: record.id
+							rollbackFromId: record.id,
 						},
 						''
 					);
 				} else {
 					vscode.window.showErrorMessage(`❌ Rollback failed: ${result.errorMessage}`);
 				}
-				
+
 				this.onRefresh();
 			}
 		);

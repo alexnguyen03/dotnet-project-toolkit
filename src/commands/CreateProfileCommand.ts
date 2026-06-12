@@ -34,9 +34,12 @@ export class CreateProfileCommand extends BaseCommand {
 			prompt: 'Enter profile name (e.g., staging-api, production-web)',
 			placeHolder: 'staging-api',
 			validateInput: (v) => {
-				if (!v?.trim()) {return 'Required';}
-				if (!/^[a-zA-Z0-9-_]+$/.test(v))
-					{return 'Only letters, numbers, hyphens, underscores';}
+				if (!v?.trim()) {
+					return 'Required';
+				}
+				if (!/^[a-zA-Z0-9-_]+$/.test(v)) {
+					return 'Only letters, numbers, hyphens, underscores';
+				}
 				return null;
 			},
 		});
@@ -49,10 +52,12 @@ export class CreateProfileCommand extends BaseCommand {
 		// Auto-detect environment or default to dev
 		const lowerName = profileName.toLowerCase();
 		let env: DeployEnvironment = DeployEnvironment.Development;
-		if (lowerName.includes('staging') || lowerName.includes('uat'))
-			{env = DeployEnvironment.Staging;}
-		if (lowerName.includes('production') || lowerName.includes('prod'))
-			{env = DeployEnvironment.Production;}
+		if (lowerName.includes('staging') || lowerName.includes('uat')) {
+			env = DeployEnvironment.Staging;
+		}
+		if (lowerName.includes('production') || lowerName.includes('prod')) {
+			env = DeployEnvironment.Production;
+		}
 
 		this.log(`Opening profile panel for new profile: ${profileName}`);
 

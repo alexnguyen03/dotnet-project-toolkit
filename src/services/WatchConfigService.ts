@@ -7,7 +7,10 @@ export class WatchConfigService {
 	constructor(private readonly context: vscode.ExtensionContext) {}
 
 	public getGroups(): WatchGroup[] {
-		return this.context.workspaceState.get<WatchGroup[]>(WatchConfigService.KEY_WATCH_GROUPS, []);
+		return this.context.workspaceState.get<WatchGroup[]>(
+			WatchConfigService.KEY_WATCH_GROUPS,
+			[]
+		);
 	}
 
 	public async saveGroup(group: WatchGroup): Promise<void> {

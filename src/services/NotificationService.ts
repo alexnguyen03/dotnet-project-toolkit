@@ -18,7 +18,7 @@ export interface INotificationService {
 }
 
 export class NotificationService implements INotificationService {
-	constructor(private readonly outputChannel: vscode.OutputChannel) { }
+	constructor(private readonly outputChannel: vscode.OutputChannel) {}
 
 	async sendDeploymentNotification(record: DeploymentRecord): Promise<NotificationResult> {
 		const config = vscode.workspace.getConfiguration('dotnetToolkit');

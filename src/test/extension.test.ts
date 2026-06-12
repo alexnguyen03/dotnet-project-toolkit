@@ -134,10 +134,7 @@ suite('Extension Test Suite', () => {
 				`DEPLOY_PWD_${projectName}_${profileName}`,
 		};
 
-		const service = new DeploymentService(
-			outputChannel,
-			passwordStorage as any
-		) as unknown as {
+		const service = new DeploymentService(outputChannel, passwordStorage as any) as unknown as {
 			buildPublishConfig: (
 				projectPath: string,
 				profileInfo: { fileName: string },
@@ -168,10 +165,7 @@ suite('Extension Test Suite', () => {
 				`DEPLOY_PWD_${projectName}_${profileName}`,
 		};
 
-		const service = new DeploymentService(
-			outputChannel,
-			passwordStorage as any
-		) as unknown as {
+		const service = new DeploymentService(outputChannel, passwordStorage as any) as unknown as {
 			buildPublishConfig: (
 				projectPath: string,
 				profileInfo: { fileName: string },

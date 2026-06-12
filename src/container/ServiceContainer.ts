@@ -131,10 +131,7 @@ export class ServiceContainer {
 			this.passwordStorage,
 			webConfigModifier
 		);
-		this.rollbackService = new RollbackService(
-			this.outputChannel,
-			this.passwordStorage
-		);
+		this.rollbackService = new RollbackService(this.outputChannel, this.passwordStorage);
 		this.historyManager = new HistoryManager(context);
 		this.projectScanner = new ProjectScanner();
 		this.watchConfigService = new WatchConfigService(context);
@@ -176,7 +173,11 @@ export class ServiceContainer {
 		);
 
 		this.portService = new PortService();
-		this.portTreeProvider = new PortTreeProvider(this.portService);
+		this.portTreeProvider = new PortTreeProvider(
+			this.portService,
+			this.projectScanner,
+			workspaceRoot
+		);
 
 		// Create command registry
 		this.commandRegistry = new CommandRegistry(context, this.outputChannel);
@@ -406,7 +407,9 @@ export class ServiceContainer {
 						prompt: 'Enter Watch Group Name',
 						placeHolder: 'Frontend & Backend',
 					});
-					if (!name) {return;}
+					if (!name) {
+						return;
+					}
 
 					const structure = await container.projectScanner.scanWorkspace(
 						vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''
@@ -508,7 +511,9 @@ export class ServiceContainer {
 						prompt: 'Enter Debug Group Name',
 						placeHolder: 'Frontend & Backend',
 					});
-					if (!name) {return;}
+					if (!name) {
+						return;
+					}
 
 					const structure = await container.projectScanner.scanWorkspace(
 						vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || ''
@@ -638,26 +643,33 @@ export class ServiceContainer {
 				container.portTreeProvider.refresh();
 				container.outputChannel.appendLine('[Ports] Refreshed active ports list');
 			}),
-			vscode.commands.registerCommand('dotnet-project-toolkit.ports.kill', async (item: any) => {
-				if (item && item.activePort) {
-					const { port, pid, processName } = item.activePort;
-					const confirm = await vscode.window.showWarningMessage(
-						`Are you sure you want to kill process "${processName}" (PID ${pid}) listening on port ${port}?`,
-						{ modal: true },
-						'Kill Process'
-					);
+			vscode.commands.registerCommand(
+				'dotnet-project-toolkit.ports.kill',
+				async (item: any) => {
+					if (item && item.activePort) {
+						const { port, pid, processName } = item.activePort;
+						const confirm = await vscode.window.showWarningMessage(
+							`Are you sure you want to kill process "${processName}" (PID ${pid}) listening on port ${port}?`,
+							{ modal: true },
+							'Kill Process'
+						);
 
-					if (confirm === 'Kill Process') {
-						try {
-							await container.portService.killPort(pid);
-							vscode.window.showInformationMessage(`Successfully killed process "${processName}" (PID ${pid})`);
-							container.portTreeProvider.refresh();
-						} catch (error: any) {
-							vscode.window.showErrorMessage(`Failed to kill process: ${error.message}`);
+						if (confirm === 'Kill Process') {
+							try {
+								await container.portService.killPort(pid);
+								vscode.window.showInformationMessage(
+									`Successfully killed process "${processName}" (PID ${pid})`
+								);
+								container.portTreeProvider.refresh();
+							} catch (error: any) {
+								vscode.window.showErrorMessage(
+									`Failed to kill process: ${error.message}`
+								);
+							}
 						}
 					}
 				}
-			})
+			)
 		);
 
 		container.outputChannel.appendLine('[Container] All services initialized');
